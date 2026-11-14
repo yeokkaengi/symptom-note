@@ -95,7 +95,7 @@ fun SettingsScreen(back: () -> Unit) {
         }
         Panel {
             Title("녹음과 개인정보")
-            Body("소리는 기기 안에만 저장되고, 직전 10초만 메모리에 둬요. 기록마다 '삭제'로 지울 수 있고, 아래 버튼으로 녹음 파일을 한 번에 지울 수 있어요(차량 상태 기록은 남음).", C.Sub)
+            Body("소리는 기기 안에만 저장되고, 직전 1분만 메모리에 둬요. 기록마다 '삭제'로 지울 수 있고, 아래 버튼으로 녹음 파일을 한 번에 지울 수 있어요(차량 상태 기록은 남음).", C.Sub)
             BigButton("녹음 파일 모두 삭제", primary = false) { confirmDelete = true }
         }
         Panel {
@@ -111,7 +111,7 @@ fun SettingsScreen(back: () -> Unit) {
             confirmDelete = false; Player.stop()
             run {
                 val list = dao.withFiles()
-                list.forEach { r -> r.file?.let { File(it).delete() } }
+                list.forEach { r -> r.files().forEach { File(it).delete() } }
                 dao.clearFiles()
                 "녹음 파일 ${list.size}개를 지웠어요"
             }

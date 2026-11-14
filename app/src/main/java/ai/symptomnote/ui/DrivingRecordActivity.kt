@@ -2,7 +2,6 @@ package ai.symptomnote.ui
 
 import ai.symptomnote.audio.RingRecorder
 import ai.symptomnote.audio.TAG
-import ai.symptomnote.data.Source
 import ai.symptomnote.service.RecordSaver
 import ai.symptomnote.vehicle.Speaker
 import ai.symptomnote.vehicle.UxWatcher
@@ -49,14 +48,14 @@ import kotlinx.coroutines.withContext
  * 주행 중 수동 기록 화면(verify 5-9, 5-10, 5-21, 5-21b).
  * - 매니페스트: distractionOptimized + 별도 taskAffinity, 열 때 FLAG_ACTIVITY_NEW_TASK.
  * - 화면 대부분을 차지하는 큰 버튼 하나 + 한 줄 상태. 애니메이션·리플 없음.
- * - 누르면 즉시 "기록 중" → 직전 10초 + 조건 스냅샷 저장 → 저장 성공 뒤에만 TTS "기록했어요"(오디오 포커스 포함).
+ * - 누르면 즉시 "기록 중" → 직전 60초 소리 + 1초 조건 기록 저장(추정 지점 앞뒤 5초가 대표 구간) → 저장 성공 뒤에만 TTS "기록했어요"(오디오 포커스 포함).
  * - 주행 중(CarUxRestrictions)에는 다른 화면으로 가는 버튼을 숨긴다.
  */
 class DrivingRecordActivity : ComponentActivity() {
     private lateinit var ux: UxWatcher
     private lateinit var speaker: Speaker
     private var busy by mutableStateOf(false)
-    private var status by mutableStateOf("버튼을 누르면 직전 10초 소리와 차량 상태를 남겨요")
+    private var status by mutableStateOf("소리가 난 지점은 앱이 찾아요")
     private var pressedAt = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,9 +90,10 @@ class DrivingRecordActivity : ComponentActivity() {
                     .clickable(interactionSource = src, indication = null, role = Role.Button, enabled = !busy) { onPress() },
                 contentAlignment = Alignment.Center
             ) {
-                Text(if (busy) "기록 중" else "방금 소리 기록", color = if (busy) Color.White else Color.Black,
+                Text(if (busy) "기록 중" else "방금 소리 났어요", color = if (busy) Color.White else Color.Black,
                     fontSize = 64.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             }
+            Text("안전할 때 누르세요 · 최근 1분이 저장돼요", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text("${if (running) "● 녹음 켜짐" else "녹음 꺼짐"} · $status", color = Color.White, fontSize = 26.sp,
                     modifier = Modifier.weight(1f), maxLines = 1)
@@ -114,7 +114,7 @@ class DrivingRecordActivity : ComponentActivity() {
         busy = true
         status = "기록 중"
         lifecycleScope.launch {
-            val r = withContext(Dispatchers.IO) { RecordSaver.save(this@DrivingRecordActivity, Source.MANUAL) }
+            val r = withContext(Dispatchers.IO) { RecordSaver.saveManual(this@DrivingRecordActivity) }
             Log.i(TAG, "수동 기록 저장 +${SystemClock.uptimeMillis() - t0}ms ok=${r.ok} ${r.message}")
             if (r.ok) {
                 status = "기록했어요"

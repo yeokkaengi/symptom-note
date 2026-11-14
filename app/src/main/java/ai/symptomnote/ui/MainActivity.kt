@@ -135,7 +135,7 @@ class MainActivity : ComponentActivity() {
             TopBar("증상노트", null)
             if (demo > 0) DemoBanner()
             Panel {
-                Title(if (running) "● 기록 중 (직전 10초 보관)" else "기록 꺼짐")
+                Title(if (running) "● 기록 중 (직전 1분 보관)" else "기록 꺼짐")
                 if (running) { Small("소리 크기"); Bar(level / 32767.0 * 4, C.Green, Modifier.fillMaxWidth()) }
                 Body("차에서 이상한 소리가 나면, 그 소리와 그 순간의 차량 상태를 함께 남깁니다.", C.Sub)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {

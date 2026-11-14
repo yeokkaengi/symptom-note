@@ -5,6 +5,8 @@ import ai.symptomnote.audio.TAG
 import ai.symptomnote.core.AutoCaptureJudge
 import ai.symptomnote.core.Conditions
 import ai.symptomnote.core.Cond
+import ai.symptomnote.core.PointEstimate
+import ai.symptomnote.core.Snapshot
 import ai.symptomnote.data.AppDb
 import ai.symptomnote.data.Recording
 import ai.symptomnote.data.Source
@@ -54,6 +56,53 @@ object RecordSaver {
         val id = AppDb.get(c).dao().insertRecording(r)
         Log.i(TAG, "기록 저장 source=$source autoFor=$autoFor ${s.message} snap=$snap")
         return Result(true, s.message, r.copy(id = id))
+    }
+
+    /**
+     * 수동 기록: 직전 60초 소리 + 같은 60초의 1초 조건 기록을 저장하고, 추정 지점 앞뒤 5초를 대표 구간(file)으로 자른다.
+     * 대표 구간과 그 10초의 조건 스냅샷은 기존 10초 기록과 같은 형태라 공통 조건·리포트·수리 후 확인이 그대로 쓴다.
+     */
+    suspend fun saveManual(c: Context): Result {
+        val now = System.currentTimeMillis()
+        val pcm = RingRecorder.grab(PointEstimate.MANUAL_SECONDS)
+            ?: return Result(false, if (RingRecorder.isRunning) "아직 녹음된 소리가 없어요" else "기록이 꺼져 있어요")
+        val rate = pcm.sampleRate
+        // 1초 미만으로 남는 맨 앞부분을 버려 "소리 끝 기준 i번째 초"가 조건 기록과 맞게 한다.
+        val s = pcm.samples.copyOfRange(pcm.samples.size % rate, pcm.samples.size)
+        val rms = PointEstimate.secondRms(s, rate)
+        if (rms.isEmpty()) return Result(false, "아직 녹음된 소리가 1초도 안 돼요")
+        val conds = PointEstimate.align(VehicleSignals.recentSeconds(), now, rms.size)
+        val p = PointEstimate.estimate(rms, conds.map { it?.brake })!!
+        val range = PointEstimate.clip(p.sec, rms.size)
+
+        val name = "manual_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date(now))}"
+        val full = File(recDir(c), "${name}_60s.wav")
+        val clip = File(recDir(c), "$name.wav")
+        val csv = File(recDir(c), "${name}_60s.csv")
+        val sFull = RingRecorder.write(full, pcm.samples, rate)
+        if (!sFull.ok) return Result(false, sFull.message)
+        val clipPcm = s.copyOfRange(range.first * rate, (range.last + 1) * rate)
+        val sClip = RingRecorder.write(clip, clipPcm, rate)
+        if (!sClip.ok) { full.delete(); return Result(false, sClip.message) }
+        try {
+            csv.writeText(buildString {
+                append("sec,t,speedKmh,brake,steeringDeg,gear,outsideTempC,wiperOn,turnOn,rms\n")
+                conds.forEachIndexed { i, d ->
+                    append("$i,${d?.t ?: ""},${d?.speedKmh ?: ""},${d?.brake ?: ""},${d?.steeringDeg ?: ""},${d?.gear ?: ""},")
+                    append("${d?.outsideTempC ?: ""},${d?.wiperOn ?: ""},${d?.turnOn ?: ""},${"%.1f".format(Locale.US, rms[i])}\n")
+                }
+            })
+        } catch (e: Throwable) { Log.w(TAG, "조건 기록 CSV 저장 실패: $e") }
+
+        val window = range.mapNotNull { conds[it] }
+        val snap = if (window.isNotEmpty()) Snapshot.ofWindow(window) else VehicleSignals.snapshot()
+        val ago = rms.size - p.sec
+        val r = Recording(t = now, file = clip.absolutePath, source = Source.MANUAL, snap = snap, sampleRate = rate, peak = sClip.peak,
+            fullFile = full.absolutePath, condFile = csv.takeIf { it.exists() }?.absolutePath, pointAgoSec = ago, pointByBrake = p.byBrake)
+        val id = AppDb.get(c).dao().insertRecording(r)
+        Log.i(TAG, "수동 기록 저장 60초=${sFull.message} 추정 지점=${ago}초 전(${if (p.byBrake) "브레이크 구간" else "전체"}) " +
+            "대표 구간=${range.first}~${range.last + 1}초 snap=$snap")
+        return Result(true, sClip.message, r.copy(id = id))
     }
 }
 
@@ -139,7 +188,7 @@ class RecordingService : Service() {
         val n = NotificationCompat.Builder(this, CH)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentTitle("증상노트 기록 중")
-            .setContentText("직전 10초만 기기 안에 보관합니다")
+            .setContentText("직전 1분만 기기 안에 보관합니다")
             .setContentIntent(open)
             .setOngoing(true)
             .build()

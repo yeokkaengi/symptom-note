@@ -199,20 +199,29 @@ object VehicleSignals {
         )
     }
 
+    /** 수동 기록(직전 60초)용 1초 요약. 주차 중에도 쌓는다. 메모리에만 둔다. */
+    private val recent = ArrayDeque<DriveSample>()
+
+    /** 직전 약 70초의 1초 요약(시간순 복사본). */
+    fun recentSeconds(): List<DriveSample> = synchronized(recent) { recent.toList() }
+
     /** 1초 요약: 평균 속도, 그 1초 안 브레이크 여부, 절대값이 가장 큰 핸들 각도. */
     private fun tick() {
         main.postDelayed(::tick, 1000)
         val now = SystemClock.elapsedRealtime()
         val cur = _live.value
-        if (cur.gear == 0 || cur.parked) { tripId = 0; return }
-        if (tripId == 0L) tripId = System.currentTimeMillis()
+        val driving = cur.gear != 0 && !cur.parked
+        if (!driving) tripId = 0 else if (tripId == 0L) tripId = System.currentTimeMillis()
         val w = synchronized(history) { history.filter { now - it.t <= 1000 }.map { it.live } } + cur
         val l = cur.copy(
             speedKmh = w.map { it.speedKmh }.average().toFloat(),
             brake = w.any { it.brake },
             steeringDeg = w.maxBy { abs(it.steeringDeg) }.steeringDeg
         )
-        val row = DriveSecond(s = l.toSample(tripId, System.currentTimeMillis()))
+        val s = l.toSample(tripId, System.currentTimeMillis())
+        synchronized(recent) { recent.addLast(s); while (recent.size > 70) recent.removeFirst() }
+        if (!driving) return
+        val row = DriveSecond(s = s)
         io.launch { runCatching { AppDb.get(app).dao().insertSecond(row) }.onFailure { Log.w(TAG, "1초 요약 저장 실패: $it") } }
     }
 }

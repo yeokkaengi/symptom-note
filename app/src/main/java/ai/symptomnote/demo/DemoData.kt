@@ -44,7 +44,7 @@ object DemoData {
 
     suspend fun clear(c: Context) {
         val dao = AppDb.get(c).dao()
-        dao.demoRecordings().forEach { r -> r.file?.let { File(it).delete() } }
+        dao.demoRecordings().forEach { r -> r.files().forEach { File(it).delete() } }
         dao.deleteDemoRecordings()
         dao.deleteDemoSymptoms()
         dao.deleteDemoSeconds()

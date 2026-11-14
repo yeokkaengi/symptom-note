@@ -79,6 +79,10 @@ fun RecordRow(r: Recording, symptomName: String?, checked: Boolean?, onCheck: (B
                 Text(sourceLabel(r), color = if (r.source == Source.AUTO) C.Blue else C.Yellow, style = TextStyle(fontSize = 22.sp))
                 symptomName?.let { Text("[$it]", color = C.Green, style = TextStyle(fontSize = 22.sp)) }
             }
+            r.pointAgoSec?.let { ago ->
+                Text("추정 지점: 버튼 ${ago}초 전 (${if (r.pointByBrake == true) "브레이크 중 가장 큰 소리" else "1분 중 가장 큰 소리"}) · 앞뒤 5초 사용",
+                    color = C.Yellow, style = TextStyle(fontSize = 22.sp))
+            }
             Small(snapLine(r))
         }
         PlayButton(r)
@@ -131,7 +135,7 @@ fun RecordsScreen(back: () -> Unit, openSymptom: (Long) -> Unit) {
             text = { Body("녹음 파일과 그 순간의 차량 상태가 함께 지워져요. 되돌릴 수 없어요.") },
             confirmButton = { BigButton("지우기") {
                 scope.launch {
-                    withContext(Dispatchers.IO) { r.file?.let { File(it).delete() }; dao.deleteRecording(r) }
+                    withContext(Dispatchers.IO) { r.files().forEach { File(it).delete() }; dao.deleteRecording(r) }
                     if (Player.playing.value == r.file) Player.stop()
                     sel -= r.id; deleting = null
                 }

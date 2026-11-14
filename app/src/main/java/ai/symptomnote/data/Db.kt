@@ -15,6 +15,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Update
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 /** 평소 주행 1초 요약. 트립(기어가 P 를 벗어난 뒤 다시 P 가 될 때까지) 단위로 쌓는다. */
@@ -44,8 +46,19 @@ data class Recording(
     val peak: Int = 0,
     /** 자동 포착 기록이면 어떤 증상 규칙으로 잡았는지. */
     val autoForSymptomId: Long? = null,
-    val demo: Boolean = false
-)
+    val demo: Boolean = false,
+    /** 수동 기록: 직전 60초 소리 전체(WAV). file 은 그중 추정 지점 앞뒤 5초를 자른 대표 구간. */
+    val fullFile: String? = null,
+    /** 수동 기록: 같은 60초의 1초 단위 조건 기록(CSV). */
+    val condFile: String? = null,
+    /** 수동 기록: 추정 지점이 버튼을 누른 때보다 몇 초 전인가. */
+    val pointAgoSec: Int? = null,
+    /** 수동 기록: 브레이크 구간 안에서 찾았는가(false = 60초 전체에서 가장 큰 소리). */
+    val pointByBrake: Boolean? = null
+) {
+    /** 이 기록이 가진 파일 전부(삭제용). */
+    fun files(): List<String> = listOfNotNull(file, fullFile, condFile)
+}
 
 /** 증상(케이스). rule 은 자동 포착을 켤 때 고정한 공통 조건(Conditions.encode). */
 @Entity
@@ -78,7 +91,7 @@ interface NoteDao {
     @Query("SELECT * FROM Recording WHERE source = 'WINDOW' ORDER BY t") suspend fun windowChecksNow(): List<Recording>
     @Query("UPDATE Recording SET symptomId = :sid WHERE id IN (:ids)") suspend fun assign(ids: List<Long>, sid: Long?)
     @Query("SELECT * FROM Recording WHERE file IS NOT NULL") suspend fun withFiles(): List<Recording>
-    @Query("UPDATE Recording SET file = NULL") suspend fun clearFiles()
+    @Query("UPDATE Recording SET file = NULL, fullFile = NULL, condFile = NULL") suspend fun clearFiles()
 
     @Insert suspend fun insertSymptom(s: Symptom): Long
     @Update suspend fun updateSymptom(s: Symptom)
@@ -96,14 +109,25 @@ interface NoteDao {
     @Query("DELETE FROM DriveSecond WHERE demo = 1") suspend fun deleteDemoSeconds()
 }
 
-@Database(entities = [DriveSecond::class, Recording::class, Symptom::class], version = 1, exportSchema = false)
+@Database(entities = [DriveSecond::class, Recording::class, Symptom::class], version = 2, exportSchema = false)
 abstract class AppDb : RoomDatabase() {
     abstract fun dao(): NoteDao
 
     companion object {
+        /** 1 → 2: 수동 기록 60초(전체 소리, 조건 기록, 추정 지점) 열 추가. 기존 기록은 그대로 둔다. */
+        private val M1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE Recording ADD COLUMN fullFile TEXT")
+                db.execSQL("ALTER TABLE Recording ADD COLUMN condFile TEXT")
+                db.execSQL("ALTER TABLE Recording ADD COLUMN pointAgoSec INTEGER")
+                db.execSQL("ALTER TABLE Recording ADD COLUMN pointByBrake INTEGER")
+            }
+        }
+
         @Volatile private var inst: AppDb? = null
         fun get(c: Context): AppDb = inst ?: synchronized(this) {
-            inst ?: Room.databaseBuilder(c.applicationContext, AppDb::class.java, "symptomnote.db").build().also { inst = it }
+            inst ?: Room.databaseBuilder(c.applicationContext, AppDb::class.java, "symptomnote.db")
+                .addMigrations(M1_2).build().also { inst = it }
         }
     }
 }
