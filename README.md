@@ -80,6 +80,11 @@ apk/yeokkaengi_증상노트_release.apk
 - `RecordingPolicyTest`: 주행 시작 자동 기록 조건(설정·화면 보임·기어·이미 켜짐), 기록 꺼짐으로 못 저장한 조건은 쿨다운 없이 재시도
 - `DemoPlanTest`: 시연 데이터가 의도한 공통 조건과 수리 후 -19dB를 실제로 만드는지
 
+### 개발 방식
+- 브랜치·커밋·버전 규칙: [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) (GitHub Flow, Conventional Commits, 유의적 버전)
+- 단위 테스트 35개, 커밋 전 `./gradlew testDebugUnitTest` 통과 확인
+- 플랫폼 동작 판단은 추측이 아니라 `../verify-app` 실측 결과(verify 5-x)를 근거로 합니다
+
 ## 7. 프로젝트 구조
 
 ```
@@ -97,7 +102,7 @@ app/src/main/java/ai/symptomnote/
 ├── demo/                     시연 데이터(DemoPlan: 순수, DemoData: 저장)
 └── ui/                       주차 화면(MainActivity …), 주행 화면(DrivingRecordActivity)
 app/src/main/assets/schema.json   글레오 함수 등록
-docs/                             platform-findings.md, roadmap.md, demo-scenario.md
+docs/                             platform-findings.md, roadmap.md, demo-scenario.md, CONTRIBUTING.md
 ```
 
 ## 8. 에뮬레이터에서 확인한 것과 한계
