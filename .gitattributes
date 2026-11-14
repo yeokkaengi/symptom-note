@@ -1,0 +1,12 @@
+# 텍스트 파일 줄바꿈 자동 처리 (저장소에는 LF로 저장)
+* text=auto
+
+# 셸 스크립트는 LF, 윈도우 배치 파일은 CRLF로 고정
+gradlew      text eol=lf
+gradlew.bat  text eol=crlf
+
+# 바이너리 (줄바꿈 변환·diff 안 함)
+*.apk  binary
+*.wav  binary
+*.jar  binary
+*.png  binary
