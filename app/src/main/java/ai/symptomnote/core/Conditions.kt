@@ -185,11 +185,45 @@ object Conditions {
         Cat.GEAR -> "기어 ${c.v}"
     }
 
+    private val ORDER = listOf(Cat.TEMP, Cat.SPEED, Cat.BRAKE, Cat.STEER, Cat.WIPER, Cat.TURN, Cat.GEAR)
+
+    /**
+     * 지금 상태([keys])가 규칙의 어느 조건을 만족하지 않는지, 범주마다 한 문장(예: "바깥 온도가 10도 이하가 아님").
+     * 모두 만족하면 빈 목록. 자동 포착이 왜 저장하지 않는지 시험·시연 중에 바로 보여 주기 위한 것.
+     */
+    fun unmet(rule: Set<Cond>, keys: Set<Cond>): List<String> = ORDER.mapNotNull { cat ->
+        val cs = rule.filter { it.cat == cat }
+        if (cs.isEmpty() || cs.any { it in keys }) return@mapNotNull null
+        when (cat) {
+            Cat.BRAKE -> "브레이크를 밟고 있지 않음"
+            Cat.SPEED -> "속도가 ${speedRanges(cs.map { it.v.toInt() }).joinToString(" 또는 ")}가 아님"
+            Cat.TEMP -> if (keys.none { it.cat == Cat.TEMP }) "바깥 온도를 알 수 없음"
+                else "바깥 온도가 " + cs.sortedBy { it.v }.joinToString(" 또는 ") {
+                    when (it.v) { "COLD" -> "10도 이하"; "MILD" -> "10~25도"; else -> "25도 초과" }
+                } + "가 아님"
+            Cat.STEER -> "핸들이 " + cs.joinToString(" 또는 ") {
+                when (it.v) { "STRAIGHT" -> "15도 미만"; "SMALL" -> "15~90도"; else -> "90도 이상" }
+            } + "가 아님"
+            Cat.WIPER -> "와이퍼가 꺼져 있음"
+            Cat.TURN -> "방향지시등이 꺼져 있음"
+            Cat.GEAR -> "기어가 ${cs.joinToString(" 또는 ") { it.v }}가 아님"
+        }
+    }
+
+    /** 자동 포착 규칙을 문장으로. */
+    fun ruleSentence(rule: Set<Cond>): String =
+        if (rule.isEmpty()) "규칙이 없어요" else "녹음 중에 \"${describe(rule)}\" 조건이 모두 맞기 시작하면 3초 뒤 저장해요"
+
+    /** 지금 자동 포착이 저장할 수 있는 상태인지 한 줄로. 저장 안 되는 이유를 바로 보여 준다. */
+    fun statusLine(rule: Set<Cond>, keys: Set<Cond>, recording: Boolean): String {
+        val miss = buildList { if (!recording) add("녹음이 꺼져 있음"); addAll(unmet(rule, keys)) }
+        return if (miss.isEmpty()) "지금 차 상태: 규칙을 모두 만족해요" else "지금 저장 안 됨: ${miss.joinToString(" · ")}"
+    }
+
     /** 규칙을 한 줄로. 연속된 속도 구간은 "시속 20~40km" 처럼 합친다. */
     fun describe(rule: Set<Cond>): String {
         if (rule.isEmpty()) return "공통 조건 없음"
-        val order = listOf(Cat.TEMP, Cat.SPEED, Cat.BRAKE, Cat.STEER, Cat.WIPER, Cat.TURN, Cat.GEAR)
-        return order.flatMap { cat ->
+        return ORDER.flatMap { cat ->
             val cs = rule.filter { it.cat == cat }
             if (cat == Cat.SPEED && cs.isNotEmpty()) speedRanges(cs.map { it.v.toInt() }) else cs.sortedBy { it.v }.map { label(it) }
         }.joinToString(", ")

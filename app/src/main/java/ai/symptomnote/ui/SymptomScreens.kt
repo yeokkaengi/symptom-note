@@ -3,6 +3,9 @@ package ai.symptomnote.ui
 import ai.symptomnote.core.CondStat
 import ai.symptomnote.core.Conditions
 import ai.symptomnote.core.SoundAnalysis
+import ai.symptomnote.core.Snapshot
+import ai.symptomnote.audio.RingRecorder
+import ai.symptomnote.vehicle.VehicleSignals
 import ai.symptomnote.data.AppDb
 import ai.symptomnote.data.Source
 import ai.symptomnote.service.SymptomAnalyzer
@@ -104,10 +107,13 @@ fun SymptomDetailScreen(id: Long, back: () -> Unit, openReport: () -> Unit) {
             Title("자동 포착")
             if (s.autoCapture) {
                 Body("켜짐 · ${Conditions.describe(info.rule)}", C.Green)
-                Small("기록 중에 이 조건이 시작되면 3초 뒤 조용히 저장해요(조건 7초 전 ~ 3초 후 소리). 30초 안에는 다시 저장하지 않아요.")
+                Body(Conditions.ruleSentence(info.rule))
+                RuleStatus(info.rule)
+                Small("조용히 저장해요(조건 7초 전 ~ 3초 후 소리). 30초 안에는 다시 저장하지 않아요.")
                 BigButton("자동 포착 끄기", primary = false) { update { it.copy(autoCapture = false, rule = null) } }
             } else {
                 Body(if (info.analysis.rule.isEmpty()) "공통 조건이 생기면 켤 수 있어요" else "규칙: ${Conditions.describe(info.analysis.rule)}", C.Sub)
+                if (info.analysis.rule.isNotEmpty()) RuleStatus(info.analysis.rule)
                 BigButton("자동 포착 켜기", enabled = info.analysis.rule.isNotEmpty()) {
                     update { it.copy(autoCapture = true, rule = Conditions.encode(info.analysis.rule)) }
                 }
@@ -117,7 +123,7 @@ fun SymptomDetailScreen(id: Long, back: () -> Unit, openReport: () -> Unit) {
         Panel {
             Title("기록 (${info.recs.size})")
             info.recs.reversed().forEach { r ->
-                val after = s.repairedAt?.let { r.t >= it } == true
+                val after = r.isAfterRepair(s.repairedAt)
                 RecordRow(r, if (after) "수리 후" else if (r.id == info.representative?.id) "대표" else null, null) {
                     if (!after) BigButton("대표로", primary = false, enabled = r.id != info.representative?.id) { update { it.copy(representativeId = r.id) } }
                     BigButton("빼기", primary = false) { scope.launch(Dispatchers.IO) { dao.assign(listOf(r.id), null); SymptomAnalyzer.refreshRule(ctx, s.id) } }
@@ -282,3 +288,12 @@ object ReportPdf {
     }
 }
 
+
+/** 지금 차 상태가 자동 포착 규칙의 어느 조건을 만족하지 않는지 한 줄(시험·시연 때 왜 저장이 안 되는지 바로 보이게). */
+@Composable
+private fun RuleStatus(rule: Set<ai.symptomnote.core.Cond>) {
+    val live by VehicleSignals.live.collectAsStateWithLifecycle()
+    val running by RingRecorder.running.collectAsStateWithLifecycle()
+    val line = Conditions.statusLine(rule, Conditions.keys(Snapshot.of(live.toSample(0, 0))), running)
+    Body(line, if (line.startsWith("지금 차 상태")) C.Green else C.Yellow)
+}
