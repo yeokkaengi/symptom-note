@@ -19,3 +19,5 @@ pulled/
 # APK: 제출용 apk/ 폴더만 예외
 *.apk
 !apk/*.apk
+# 에뮬레이터에서 꺼낸 DB 파일
+pulled*
