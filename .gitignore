@@ -1,0 +1,21 @@
+# 빌드 산출물
+build/
+.gradle/
+.kotlin/
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# 서명 키
+*.jks
+*.keystore
+keystore.properties
+
+# 단말에서 꺼낸 파일
+pulled/
+
+# APK: 제출용 apk/ 폴더만 예외
+*.apk
+!apk/*.apk

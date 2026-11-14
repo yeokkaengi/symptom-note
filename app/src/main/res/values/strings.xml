@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">증상노트</string>
+    <string name="drive_label">증상노트 주행 기록</string>
+</resources>

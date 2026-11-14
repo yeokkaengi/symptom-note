@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  증상노트 매니페스트. 권한 등급·근거는 ../verify-app README(탭 2·3·5)의 실측 결과를 따른다.
+  각 줄 주석: [등급] 쓰는 곳.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-feature
+        android:name="android.hardware.type.automotive"
+        android:required="true" />
+
+    <!-- 녹음 / 포그라운드 서비스 (verify 5-17: 화면이 보일 때 시작한 마이크 FGS 만 가려져도 녹음 유지) -->
+    <!-- [Dangerous] 링 버퍼 녹음 → 실행 중 요청 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- [Normal] startForeground -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- [Normal] foregroundServiceType="microphone" (Android 14) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- [Dangerous] "증상노트 기록 중" 알림 → 실행 중 요청 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 표준 차량 속성 (verify 탭 2) -->
+    <!-- [Dangerous] PERF_VEHICLE_SPEED (m/s) → 실행 중 요청 -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+    <!-- [Normal] GEAR_SELECTION -->
+    <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
+    <!-- [Normal] ENV_OUTSIDE_TEMPERATURE -->
+    <uses-permission android:name="android.car.permission.CAR_EXTERIOR_ENVIRONMENT" />
+
+    <!-- Pleos Vehicle SDK (verify 탭 3, 단말 normal 확인) -->
+    <!-- [Normal] Brake · SteeringWheel 각도 · Odometer -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <!-- [Normal] Wiper -->
+    <uses-permission android:name="pleos.car.permission.CAR_WINDOWS" />
+    <!-- [Normal] TurnSignal -->
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <!-- [Normal] Seat 착석(창문 점검 전 동승석 확인) -->
+    <uses-permission android:name="pleos.car.permission.CAR_SEATS" />
+    <!-- [Normal] Window.setWindowPosition (창문 점검, verify 5-1) -->
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_WINDOWS" />
+    <!-- [Normal] Pleos TTS "기록했어요" (verify 5-6) -->
+    <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
+
+    <application
+        android:name=".App"
+        android:allowBackup="false"
+        android:icon="@android:drawable/ic_btn_speak_now"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SymptomNote">
+
+        <!-- 주차 중 화면. DO 선언 없음 → 주행 중에는 시스템이 가린다(verify 5-9). -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 주행 중 수동 기록 화면(verify 5-9, 5-21, 5-21b).
+             distractionOptimized 선언만으로는 부족하고, 자기 태스크 맨 아래에 있어야 차단이 풀린다
+             → 별도 taskAffinity + FLAG_ACTIVITY_NEW_TASK 로 연다.
+             configChanges: 내비와 분할할 때 재생성 없이 크기만 바뀌게(verify 5-10).
+             주행 중에는 주차 화면이 통째로 가려져(5-9) 그 안의 버튼으로 이 화면을 열 수 없으므로, 앱 목록에서 바로 열 수 있게 런처 항목을 둔다. -->
+        <activity
+            android:name=".ui.DrivingRecordActivity"
+            android:exported="true"
+            android:label="@string/drive_label"
+            android:taskAffinity="ai.symptomnote.drive"
+            android:launchMode="singleTask"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="distractionOptimized" android:value="true" />
+        </activity>
+
+        <!-- 링 버퍼 녹음 + 주행 신호 기록. 화면이 보일 때 홈 화면 버튼으로만 시작(verify 5-8, 5-17). -->
+        <service
+            android:name=".service.RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <!-- 글레오 함수(assets/schema.json). 글레오는 "<패키지>.<함수 이름>" action 으로 sendBroadcast 한다(verify 5-16).
+             문서 예제 형태(함수 이름만)도 함께 받는다. -->
+        <receiver
+            android:name=".gleo.GleoReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="READ_SYMPTOM_SUMMARY" />
+                <action android:name="ai.symptomnote.READ_SYMPTOM_SUMMARY" />
+                <action android:name="HOW_TO_START_RECORDING" />
+                <action android:name="ai.symptomnote.HOW_TO_START_RECORDING" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>
