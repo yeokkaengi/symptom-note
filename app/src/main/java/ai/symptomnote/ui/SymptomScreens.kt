@@ -120,7 +120,7 @@ fun SymptomDetailScreen(id: Long, back: () -> Unit, openReport: () -> Unit) {
                 val after = s.repairedAt?.let { r.t >= it } == true
                 RecordRow(r, if (after) "수리 후" else if (r.id == info.representative?.id) "대표" else null, null) {
                     if (!after) BigButton("대표로", primary = false, enabled = r.id != info.representative?.id) { update { it.copy(representativeId = r.id) } }
-                    BigButton("빼기", primary = false) { scope.launch(Dispatchers.IO) { dao.assign(listOf(r.id), null) } }
+                    BigButton("빼기", primary = false) { scope.launch(Dispatchers.IO) { dao.assign(listOf(r.id), null); SymptomAnalyzer.refreshRule(ctx, s.id) } }
                 }
             }
         }

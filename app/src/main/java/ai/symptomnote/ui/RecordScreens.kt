@@ -6,6 +6,7 @@ import ai.symptomnote.data.AppDb
 import ai.symptomnote.data.Recording
 import ai.symptomnote.data.Source
 import ai.symptomnote.data.Symptom
+import ai.symptomnote.service.SymptomAnalyzer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -118,12 +119,16 @@ fun RecordsScreen(back: () -> Unit, openSymptom: (Long) -> Unit) {
         }
     }
 
-    if (grouping) GroupDialog(symptoms, onDismiss = { grouping = false }) { existing, newName ->
+    // 실제 기록을 시연 증상에 섞지 않는다(시연 증상은 수리 완료 상태라 새 기록이 "수리 후 재발"로 분류되고 규칙도 안 바뀜).
+    val realSelected = recs.any { it.id in sel && !it.demo }
+    if (grouping) GroupDialog(symptoms.filter { !(realSelected && it.demo) }, onDismiss = { grouping = false }) { existing, newName ->
         val ids = sel.toList()
         scope.launch {
             val sid = withContext(Dispatchers.IO) {
                 val id = existing ?: dao.insertSymptom(Symptom(name = newName.trim(), createdAt = System.currentTimeMillis()))
-                dao.assign(ids, id); id
+                dao.assign(ids, id)
+                SymptomAnalyzer.refreshRule(ctx, id)
+                id
             }
             sel.clear(); grouping = false
             openSymptom(sid)

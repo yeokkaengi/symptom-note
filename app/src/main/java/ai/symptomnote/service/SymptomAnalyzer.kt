@@ -11,6 +11,8 @@ import ai.symptomnote.data.AppDb
 import ai.symptomnote.data.Recording
 import ai.symptomnote.data.Source
 import ai.symptomnote.data.Symptom
+import ai.symptomnote.audio.TAG
+import android.util.Log
 import android.content.Context
 import java.io.File
 
@@ -82,6 +84,19 @@ object SymptomAnalyzer {
         val p = WavIo.read(File(path))
         SoundAnalysis.bands(p.samples, p.sampleRate)
     }.getOrNull()?.also { bandCache[path] = it }
+
+    /**
+     * 자동 포착이 켜진 증상에 기록이 더해지면 규칙을 새 공통 조건으로 바꾼다.
+     * (규칙은 켤 때 고정되므로, 그대로 두면 예전 조건(예: 시연 데이터의 "차가운 날")으로만 잡게 된다.)
+     * 새 공통 조건이 없으면 자동 포착을 끈다.
+     */
+    suspend fun refreshRule(c: Context, sid: Long) {
+        val dao = AppDb.get(c).dao()
+        val s = dao.symptomsNow().firstOrNull { it.id == sid }?.takeIf { it.autoCapture } ?: return
+        val rule = load(c, s.copy(rule = null), dao.recordingsOfNow(sid)).analysis.rule
+        dao.updateSymptom(s.copy(autoCapture = rule.isNotEmpty(), rule = Conditions.encode(rule).ifEmpty { null }))
+        Log.i(TAG, "자동 포착 규칙 갱신: ${s.name} ${s.rule} → ${Conditions.encode(rule)}")
+    }
 
     suspend fun load(c: Context, s: Symptom, recs: List<Recording>): SymptomInfo {
         val dao = AppDb.get(c).dao()
