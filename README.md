@@ -8,16 +8,16 @@
 ## 1. APK 파일 위치
 
 ```
-apk/TEAM_증상노트_release.apk
+apk/yeokkaengi_증상노트_release.apk
 ```
-- `assembleRelease` 결과물(디버그 키 서명, 별도 키 없이 설치 가능). 팀명(`TEAM`)은 제출 전에 바꿉니다.
+- `assembleRelease` 결과물(디버그 키 서명, 별도 키 없이 설치 가능). 팀명은 `yeokkaengi`입니다.
 
 ## 2. 실행 방법
 
 1. `Pleos_Connect_v2.1.0` AVD를 실행하고 `adb devices`에 `emulator-5554 device`가 보이는지 확인합니다.
 2. 설치합니다.
    ```
-   adb install -r apk/TEAM_증상노트_release.apk
+   adb install -r apk/yeokkaengi_증상노트_release.apk
    ```
 3. 앱 목록에서 **증상노트**를 실행합니다(또는 `adb shell am start --user 10 -n ai.symptomnote/.ui.MainActivity`).
    - 기어가 P에서 바뀌면 시스템이 주차 화면을 "주행 중에는 사용할 수 없습니다"로 가리므로, 앱이 큰 버튼 화면(**증상노트 주행 기록**)을 자동으로 띄웁니다. 앱 목록에서 직접 열 수도 있습니다. 녹음은 그동안에도 계속됩니다.
