@@ -145,7 +145,7 @@ class MainActivity : ComponentActivity() {
                 }
                 if (!canStart && !running) Body("기어가 P일 때만 기록을 시작할 수 있어요", C.Yellow)
                 (msg ?: err)?.let { Body(it, C.Red) }
-                Small("자동 포착: $auto")
+                if (auto.contains(ai.symptomnote.core.RecordingPolicy.MISSED_CAPTURE)) Body("자동 포착: $auto", C.Yellow) else Small("자동 포착: $auto")
             }
             LivePanel(live)
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {

@@ -1,5 +1,6 @@
 package ai.symptomnote.ui
 
+import ai.symptomnote.Settings
 import ai.symptomnote.audio.Player
 import ai.symptomnote.audio.RingRecorder
 import ai.symptomnote.data.AppDb
@@ -79,6 +80,7 @@ fun SettingsScreen(back: () -> Unit) {
     val demo by remember { dao.demoCount() }.collectAsStateWithLifecycle(0)
     var msg by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var autoStart by remember { mutableStateOf(Settings.autoStart(ctx)) }
     var confirmDelete by remember { mutableStateOf(false) }
     fun run(block: suspend () -> String) { busy = true; scope.launch { msg = withContext(Dispatchers.IO) { runCatching { block() }.getOrElse { "실패: ${it.message}" } }; busy = false } }
 
@@ -94,8 +96,16 @@ fun SettingsScreen(back: () -> Unit) {
             }
         }
         Panel {
+            Title("주행 시작 시 자동으로 기록 켜기")
+            Body("기어가 P에서 바뀌어 주행 기록 화면이 뜨면 기록을 자동으로 켜요. 끄면 홈의 '기록 시작'이나 주행 기록 화면에서 직접 켜야 해요.", C.Sub)
+            BigButton(if (autoStart) "켜짐 (누르면 끄기)" else "꺼짐 (누르면 켜기)", primary = autoStart) {
+                autoStart = !autoStart; Settings.setAutoStart(ctx, autoStart)
+            }
+        }
+        Panel {
             Title("녹음과 개인정보")
-            Body("소리는 기기 안에만 저장되고, 직전 1분만 메모리에 둬요. 기록마다 '삭제'로 지울 수 있고, 아래 버튼으로 녹음 파일을 한 번에 지울 수 있어요(차량 상태 기록은 남음).", C.Sub)
+            Body("주행을 시작하면 직전 1분 소리만 기기 안 메모리에 보관합니다. 버튼을 누르거나 자동 포착 조건일 때만 저장합니다.")
+            Body("저장된 소리는 기기 안에만 있어요. 기록마다 '삭제'로 지울 수 있고, 아래 버튼으로 녹음 파일을 한 번에 지울 수 있어요(차량 상태 기록은 남음).", C.Sub)
             BigButton("녹음 파일 모두 삭제", primary = false) { confirmDelete = true }
         }
         Panel {

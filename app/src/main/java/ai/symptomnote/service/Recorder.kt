@@ -6,6 +6,7 @@ import ai.symptomnote.core.AutoCaptureJudge
 import ai.symptomnote.core.Conditions
 import ai.symptomnote.core.Cond
 import ai.symptomnote.core.PointEstimate
+import ai.symptomnote.core.RecordingPolicy
 import ai.symptomnote.core.Snapshot
 import ai.symptomnote.data.AppDb
 import ai.symptomnote.data.Recording
@@ -144,6 +145,13 @@ object AutoCaptureEngine {
         val now = SystemClock.elapsedRealtime()
         for (w in watches.values) {
             val at = w.judge.onSample(now, Conditions.matches(w.rule, keys)) ?: continue
+            if (!RingRecorder.isRunning) {
+                // 기록이 꺼져 있으면 저장할 소리가 없다. 쿨다운을 걸지 않고(onSaved(false)) 사용자에게 알린다.
+                w.judge.onSaved(false)
+                Log.w(TAG, "${RecordingPolicy.MISSED_CAPTURE}: ${w.symptom.name}")
+                _last.value = "${SimpleDateFormat("HH:mm:ss", Locale.KOREA).format(Date())} ${w.symptom.name} · ${RecordingPolicy.MISSED_CAPTURE}"
+                continue
+            }
             Log.i(TAG, "자동 포착 조건 시작: ${w.symptom.name} → ${at - now}ms 뒤 저장")
             main.postDelayed({
                 io.launch {
@@ -157,9 +165,10 @@ object AutoCaptureEngine {
 }
 
 /**
- * 마이크 포그라운드 서비스(verify 5-17). 화면이 보일 때 홈 화면 "기록 시작"으로만 시작한다
+ * 마이크 포그라운드 서비스(verify 5-17). 화면이 보일 때만 시작한다
  * (화면 없이 시작한 마이크 FGS 는 Android 14 에서 막힘: verify 5-8, 5-7 재시험).
- * 다른 앱이 화면을 가려도 녹음이 계속된다. 알림: "증상노트 기록 중".
+ * 시작하는 곳: 홈 "기록 시작", 주행 기록 화면(주행 시작 시 자동 / "기록 켜기" 버튼).
+ * 다른 앱이 화면을 가려도 녹음이 계속된다. 알림: "증상노트 기록 켜짐".
  */
 class RecordingService : Service() {
     companion object {
@@ -169,7 +178,13 @@ class RecordingService : Service() {
         private val _error = MutableStateFlow<String?>(null)
         val error: StateFlow<String?> = _error.asStateFlow()
 
-        fun start(c: Context) { _error.value = null; c.startForegroundService(Intent(c, RecordingService::class.java)) }
+        private const val EXTRA_AUTO = "auto"
+
+        /** [auto] = 주행 시작으로 자동으로 켠 경우(알림 문구만 다름). */
+        fun start(c: Context, auto: Boolean = false) {
+            _error.value = null
+            c.startForegroundService(Intent(c, RecordingService::class.java).putExtra(EXTRA_AUTO, auto))
+        }
         fun stop(c: Context) { c.startService(Intent(c, RecordingService::class.java).setAction(ACTION_STOP)) }
     }
 
@@ -187,8 +202,9 @@ class RecordingService : Service() {
         val open = PendingIntent.getActivity(this, 0, packageManager.getLaunchIntentForPackage(packageName), PendingIntent.FLAG_IMMUTABLE)
         val n = NotificationCompat.Builder(this, CH)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setContentTitle("증상노트 기록 중")
-            .setContentText("직전 1분만 기기 안에 보관합니다")
+            .setContentTitle("증상노트 기록 켜짐")
+            .setContentText((if (intent?.getBooleanExtra(EXTRA_AUTO, false) == true) "주행 시작으로 자동으로 켰어요 · " else "") +
+                "직전 1분 소리만 기기 안 메모리에 보관합니다")
             .setContentIntent(open)
             .setOngoing(true)
             .build()
