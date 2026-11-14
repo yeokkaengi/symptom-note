@@ -1,0 +1,26 @@
+{
+  "packageName": "ai.symptomnote",
+  "appDescription": "Symptom Note records strange car sounds together with the vehicle state, finds the conditions in which they repeat, and prepares a report for the repair shop.",
+  "invokeWord": "증상노트",
+  "version": "1.0.0",
+  "actionCalls": [
+    {
+      "type": "function",
+      "function": {
+        "name": "READ_SYMPTOM_SUMMARY",
+        "description": "증상노트에 정리된 최근 차 소리 증상을 요약해서 읽어 줌 (Read a summary of the recent car sound symptoms: name, count, common conditions, after-repair check).",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+        "component": "service"
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "HOW_TO_START_RECORDING",
+        "description": "증상노트로 차 소리 기록을 시작하는 방법을 안내 (Explain how to start recording car sounds with Symptom Note).",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+        "component": "service"
+      }
+    }
+  ]
+}
