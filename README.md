@@ -1,114 +1,206 @@
 # 증상노트
 
-**차에서 이상한 소리가 날 때, 그 소리와 그 순간의 차량 상태를 함께 기록하고, 반복되는 조건을 찾아 정비소에 보여 줄 리포트로 정리하고, 수리 후에는 같은 조건에서 다시 확인해 주는 앱.**
+> 차에서 이상한 소리가 난 순간의 소리와 차량 상태를 함께 남기고, 반복되는 조건을 찾아 정비소에 보여 줄 한 장으로 정리하는 Pleos Connect 차량 앱.
 
-- 패키지: `ai.symptomnote` · Pleos Connect(AAOS, Android 14) 차량용 앱
-- 기술 근거: `../verify-app/README.md` 탭 5 실측 결과(이 문서에서 "verify 5-x"로 표시)
+> **심사용 3단계 실행** (Pleos Connect Emulator 2.1.0)
+>
+> 1. APK 설치: `adb install -r apk/yeokkaengi_증상노트_release.apk` 후 앱 목록에서 증상노트를 연다.
+> 2. 처음 열 때 묻는 권한(마이크, 알림, 차량 속도)을 모두 허용한다.
+> 3. Virtual Console에서 기어를 D로 바꾼다. 기록이 켜지고 "방금 소리 났어요" 주행 화면이 뜬다.
+>    결과 화면부터 보려면 홈 → 설정 → 시연 데이터 불러오기 → 증상·리포트.
 
-## 1. APK 파일 위치
+## 시작은 이 장면이었다
 
+달릴 때 브레이크를 밟으면 끼익 소리가 난다. 정비소에 차를 가져간다. 정비사가 한 바퀴 돌아보는데 그날따라 소리가 안 난다. "다시 나면 오세요." 그냥 돌아온다.
+흔히 겪는 장면이다. 한국소비자원의 자동차 정비 피해 사례 중 33%는 하자 재발이다. 현대차 클레임의 30%는 소음·진동이다.
+소리는 말로 설명하기 어렵고, 언제 나는지는 운전자도 정확히 모른다. 그래서 소리가 난 그 순간을 차량 신호와 함께 남기고, 여러 번 모인 기록에서 공통 조건을 찾게 했다.
+
+▶ 시연 영상: (링크 추가 예정)
+
+## 이렇게 써요
+
+> 아래는 모두 Pleos Connect Emulator 2.1.0에서 실제로 실행한 화면이다(목업 없음). 차량 조작은 Virtual Console로 했다.
+> 왼쪽은 차량 클러스터, 오른쪽이 앱이다.
+
+### ① 기어를 D로 바꾸면 기록이 켜지고 큰 버튼 화면이 뜬다
+
+기어가 P에서 바뀌면 주차 화면은 시스템이 가린다. 앱은 그 대신 큰 버튼 하나짜리 주행 화면을 띄우고 **기록을 자동으로 켠다**. 화면 아래에 "주행 시작으로 기록을 자동으로 켰어요"가 보인다.
+창 막대를 끌면 내비와 반반으로 나눠 쓸 수 있다.
+
+| 기어 D 직후 | 내비와 반반 |
+|---|---|
+| ![기어 D에서 뜬 주행 화면](docs/img/readme/01-drive-auto-start.png) | ![내비와 나눈 화면](docs/img/readme/01-drive-split-navi.png) |
+
+### ② 소리가 나고 1분 안에 누르면, 앱이 소리 난 지점을 찾는다
+
+앱은 직전 60초 소리와 1초 단위 차량 상태를 늘 들고 있다. 그래서 운전자는 소리가 난 순간이 아니라 안전할 때 누르면 된다.
+누르면 버튼이 바로 "기록 중"으로 바뀌고, 저장이 끝나면 음성으로 "기록했어요"라고 말한다. 기록 목록에는 "**추정 지점: 버튼 6초 전 (브레이크 중 가장 큰 소리)**"처럼 앱이 찾은 지점이 나온다.
+
+| 누른 순간 | 기록 목록 |
+|---|---|
+| ![기록 중](docs/img/readme/02-button-saving.png) | ![추정 지점](docs/img/readme/02-record-list-point.png) |
+
+이 캡처에서는 시속 30km로 20초 달린 뒤 브레이크를 밟아 세우고 4초 뒤에 눌렀다.
+
+### ③ 기록을 증상으로 묶으면 공통 조건이 나온다
+
+기록 목록에서 기록을 골라 "브레이크 끼익" 같은 증상으로 묶는다. 앱은 각 조건이 그 증상 기록에 얼마나 있었는지와 평소 주행에 얼마나 있었는지를 비교한다.
+실제 주행 기록 4개(수동 3, 자동 1)로 나온 결과는 "**시속 10~40km, 브레이크 중 — 4회 중 4회 (평소 주행에서는 이 조건이 3%)**"였다. 정비사에게 그대로 읽어 줄 수 있는 재현 레시피도 함께 나온다.
+
+![공통 조건](docs/img/readme/03-common-condition.png)
+
+### ④ 자동 포착을 켜면 버튼 없이 저장된다
+
+공통 조건으로 자동 포착을 켜면, 녹음 중에 그 조건이 모두 맞기 시작한 뒤 3초에 조용히 저장한다. 증상 화면에는 규칙 문장과 **지금 저장이 안 되는 이유** 한 줄이 보인다. 주차 중이라 "속도가 시속 10~40km가 아님 · 브레이크를 밟고 있지 않음"이 나왔다.
+②의 주행에서 시속 30km로 달리다 브레이크를 밟자 09:21:39에 자동 기록이 저장됐다.
+
+![자동 포착 규칙](docs/img/readme/04-auto-capture-rule.png)
+
+![홈의 자동 포착 결과](docs/img/readme/04-home-auto-saved.png)
+
+### ⑤ 정비소 리포트
+
+증상 하나를 한 장으로 정리한다. 횟수, 기간, 공통 조건, 재현 레시피, 대표 소리, 조건 그래프가 들어간다. **PDF로 저장**하면 `Download/SymptomNote/`에 남는다.
+리포트 끝에는 "고장 원인을 판정하지 않습니다"를 적었다. 앱은 정비사가 소리를 다시 내 볼 단서만 준다.
+
+| 앱 화면 | 저장된 PDF |
+|---|---|
+| ![리포트 화면](docs/img/readme/05-report-screen.png) | ![리포트 PDF](docs/img/readme/05-report-pdf.png) |
+
+### ⑥ 수리 후 확인 (시연 데이터)
+
+수리를 받은 날을 기록하면, 그 뒤 같은 조건을 몇 번 지났는지와 그때 자동으로 남은 소리를 수리 전과 비교한다.
+시연 데이터에서는 "수리 후 같은 조건 12회 통과 · 기록 2개(자동 2개) · 수리 전 특징 대역(1~2kHz)이 평균 **-19dB** (참고 지표)"가 나왔다. dB 값은 참고 지표다. 수리 여부를 판정하지 않는다.
+
+![수리 후 확인](docs/img/readme/06-repair-check.png)
+
+## APK
+
+`apk/yeokkaengi_증상노트_release.apk` (assembleRelease, 디버그 키 서명, versionName 1.0.0, 패키지 `ai.symptomnote`)
+
+```bash
+adb install -r apk/yeokkaengi_증상노트_release.apk
 ```
-apk/yeokkaengi_증상노트_release.apk
-```
-- `assembleRelease` 결과물(디버그 키 서명, 별도 키 없이 설치 가능). 팀명은 `yeokkaengi`입니다.
 
-## 2. 실행 방법
+## 주요 기능
 
-1. `Pleos_Connect_v2.1.0` AVD를 실행하고 `adb devices`에 `emulator-5554 device`가 보이는지 확인합니다.
-2. 설치합니다.
-   ```
-   adb install -r apk/yeokkaengi_증상노트_release.apk
-   ```
-3. 앱 목록에서 **증상노트**를 실행합니다(또는 `adb shell am start --user 10 -n ai.symptomnote/.ui.MainActivity`).
-   - 기어가 P에서 바뀌면 시스템이 주차 화면을 "주행 중에는 사용할 수 없습니다"로 가리므로, 앱이 큰 버튼 화면(**증상노트 주행 기록**)을 자동으로 띄웁니다. 앱 목록에서 직접 열 수도 있습니다. 녹음은 그동안에도 계속됩니다.
-4. 처음 실행하면 권한 팝업(마이크, 알림, 차량 속도)이 뜹니다. 모두 **허용**하세요.
-5. Virtual Console에서 기어를 **P**로 두고 홈의 **기록 시작**을 누릅니다.
-6. 화면 순서와 시연 방법은 [`docs/demo-scenario.md`](docs/demo-scenario.md)를 보세요. 바로 결과 화면을 보려면 **설정 → 시연 데이터 불러오기**.
+| 기능 | 내용 |
+|---|---|
+| 상시 기록 | 마이크 포그라운드 서비스로 직전 60초만 메모리에 들고 있다. 다른 앱이 가려도 계속된다 |
+| 주행 시작 자동 기록 | 기어가 P에서 바뀌면 큰 버튼 화면을 띄우고 기록을 켠다(설정에서 끌 수 있음) |
+| 주행 중 수동 기록 | 큰 버튼 하나. 직전 60초 소리와 1초 단위 차량 상태를 저장하고 소리 난 지점을 찾는다 |
+| 차량 신호 | 속도·기어·바깥 온도(표준), 브레이크·핸들·와이퍼·방향지시등·주행거리(Pleos Vehicle) |
+| 증상과 공통 조건 | 기록을 묶으면 조건별로 증상 기록 비율과 평소 주행 비율을 비교한다 |
+| 자동 포착 | 공통 조건이 맞기 시작하면 3초 뒤 조용히 저장한다 |
+| 정비소 리포트 | 한 장 요약, PDF 저장 |
+| 수리 후 확인 | 같은 조건 통과 횟수, 수리 전후 특징 대역 비교 |
+| 글레오 | 녹음이 꺼진 상태에서 최근 증상 요약, 기록 시작 방법 안내 |
+| 창문 점검 | 운전석 창문을 움직이며 소리를 남기는 실차 전제 기능 |
+| 개인정보 | 소리는 기기 안에만 둔다. 기록별 삭제, 녹음 파일 한 번에 삭제 |
 
-### 직접 빌드하기
-- Gradle 8.10.2 / AGP 8.8.2 / Kotlin 2.0.0 / **JDK 17** / compileSdk 35 / targetSdk 34 / minSdk 28 / Jetpack Compose
-- 의존성: Pleos Vehicle 2.3.2, Pleos TextToSpeech 3.3.1, Room 2.6.1(KSP 2.0.0-1.0.24)
-- `local.properties`에 `sdk.dir=...`를 적고:
-  ```
-  # Git Bash
-  JAVA_HOME=/c/Users/PC/.jdks/temurin-17.0.20.1 ./gradlew assembleDebug testDebugUnitTest
-  # 제출용
-  JAVA_HOME=/c/Users/PC/.jdks/temurin-17.0.20.1 ./gradlew assembleRelease
-  ```
-
-## 3. 테스트 환경 및 필요한 설정
+## 테스트 환경 및 필요한 설정
 
 | 항목 | 값 |
 |---|---|
-| 에뮬레이터 | `Pleos_Connect_v2.1.0` AVD (Android 14 / API 34, 현재 사용자 10), Vehicle Service 2.3.22 |
-| 마이크 | AVD **Extended controls → Microphone → "Virtual microphone uses host audio input" 켜기**. 끄면 녹음이 거의 무음입니다(verify 트러블슈팅 7) |
-| Virtual Console | 기어(P/D), 가속·브레이크, 핸들 각도, 와이퍼, 동승석 착석을 바꿀 때 사용. 기록 시작은 **P**에서만 가능 |
-| 권한(실행 중 요청) | `RECORD_AUDIO`, `POST_NOTIFICATIONS`, `android.car.permission.CAR_SPEED` |
-| 권한(선언만, normal) | `FOREGROUND_SERVICE(_MICROPHONE)`, `CAR_POWERTRAIN`, `CAR_EXTERIOR_ENVIRONMENT`, `pleos.car.permission.CAR_DRIVE / CAR_WINDOWS / CAR_LIGHTS / CAR_SEATS / CONTROL_CAR_WINDOWS / TTS_SERVICE` |
-| adb로 권한 미리 주기(선택) | `adb shell pm grant --user 10 ai.symptomnote android.permission.RECORD_AUDIO` (POST_NOTIFICATIONS, android.car.permission.CAR_SPEED도 같은 방식) |
+| 에뮬레이터 | Pleos Connect Emulator 2.1.0 AVD (Android 14 / API 34, 앱 사용자 10), 화면 2560×1440 |
+| 마이크 | AVD Extended controls → Microphone → "Virtual microphone uses host audio input" 켜기. 끄면 녹음이 거의 무음이다 |
+| Virtual Console | `adb forward tcp:8088 tcp:8088` 후 브라우저에서 `http://127.0.0.1:8088/` |
+| 실행 중 요청 권한 | `RECORD_AUDIO`, `POST_NOTIFICATIONS`, `android.car.permission.CAR_SPEED` |
+| 선언만 하는 권한 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`, `CAR_POWERTRAIN`, `CAR_EXTERIOR_ENVIRONMENT`, `pleos.car.permission.CAR_DRIVE · CAR_WINDOWS · CAR_LIGHTS · CAR_SEATS · CONTROL_CAR_WINDOWS · TTS_SERVICE` |
+| 권한 미리 주기(선택) | `adb shell pm grant --user 10 ai.symptomnote android.permission.RECORD_AUDIO` (나머지 두 개도 같은 방식) |
+| 네트워크·계정 | 필요 없음 |
 
-## 4. 기능
+### Virtual Console 조작
 
-| # | 기능 | 설명 | 근거 |
-|---|---|---|---|
-| 1 | 녹음 | 홈(기어 P)에서 "기록 시작", 또는 **주행 시작 시 자동**(설정, 기본 켜짐: 기어가 P에서 바뀌어 주행 기록 화면이 보일 때 시작) → 마이크 FGS에서 48kHz(실패 시 44.1kHz) 직전 60초 링 버퍼(약 5.6MB). 다른 앱이 가려도 계속, 알림 "증상노트 기록 켜짐". 기록이 꺼져 있으면 주행 기록 화면에 빨간 안내 + 눌러서 켜기, 자동 포착 조건이 감지되면 홈에 "자동 포착 조건 감지 · 기록이 꺼져 있어 저장 못 함" | 5-3, 5-8, 5-17 |
-| 2 | 주행 신호 | 속도(표준, m/s→km/h)·기어·바깥 온도(표준), 브레이크·핸들·와이퍼·방향지시등·주행거리(Pleos). 기어가 P가 아닐 때 1초 요약을 트립 단위로 저장 | 5-5, 탭 3 |
-| 3 | 주행 중 수동 기록 | DO 선언 + 별도 태스크의 큰 버튼 "방금 소리 났어요"(아래 줄 "안전할 때 누르세요 · 최근 1분이 저장돼요"). 주행이 시작되면 자동으로 열림. 0.25초 안에 "기록 중", 저장 성공 뒤에만 TTS "기록했어요"(오디오 포커스 요청·반납). 누르면 직전 60초 소리 + 같은 60초의 1초 조건 기록(CSV) 저장 → **추정 지점**(브레이크 중 소리가 가장 큰 1초, 브레이크가 없으면 60초 중 가장 큰 1초) 앞뒤 5초를 대표 구간으로 잘라 공통 조건·리포트에 사용 | 5-9, 5-21, 5-21b |
-| 4 | 증상·공통 조건 | 기록을 증상으로 묶고, 조건별 포함률(기록 중) vs 기준률(평소 주행)을 비교. 포함률 75% 이상 & 2배 이상만 채택(설계값) | - |
-| 5 | 자동 포착 | 공통 조건이 시작되는 순간 + 3초에 조용히 저장(조건 7초 전~3초 후 소리). 같은 증상 30초 안 재저장 없음 | 5-13, 5-20 |
-| 6 | 정비소 리포트 | 증상별 한 장: 횟수·기간·공통 조건·재현 레시피·대표 소리·조건 그래프. **PDF로 저장** → `Download/SymptomNote/` | - |
-| 7 | 수리 후 확인 | 수리 완료 날짜 이후 같은 조건 통과 횟수, 자동 포착 수, 수리 전 특징 대역 에너지 변화(dB, "참고 지표"), 재발 기록 분류 | 5-4 |
-| 8 | 글레오 | 조회용 함수 `READ_SYMPTOM_SUMMARY`, `HOW_TO_START_RECORDING`. 녹음 중에는 글레오가 호출을 무시함 → [`docs/platform-findings.md`](docs/platform-findings.md) | 5-16, 5-19 |
-| 9 | 창문 자가 점검 | 확인 창 → 동승석 착석 확인 → 창문 제어 → 녹음 → 되돌림 → 첫 점검과 비교. **실차 전제 기능** | 5-1, 5-2 |
+| 장면 | 화면에서 | curl로 할 때 |
+|---|---|---|
+| ① 주행 시작 | 기어 D | `curl -X PUT "http://127.0.0.1:8088/vehicle/gear?gear=Drive"` |
+| ② 달리다 브레이크 | Accelerator 페달로 시속 30km를 20초 유지 → Brake 페달(60%)로 정차 → 앱의 큰 버튼 | `.../vehicle/controls?speed=30&accelerator=15&brake=0` 을 1초마다, 이어서 `speed`를 줄이며 `brake=60` |
+| ③ 증상으로 묶기 | 기어 P → 홈 → 기록 목록 → 기록 고르기 → 증상으로 묶기 | `.../vehicle/gear?gear=Park` |
+| ④ 자동 포착 | 증상 화면 → 자동 포착 켜기 → 다시 D → 시속 10~40km에서 Brake | ②와 같음 |
+| ⑤ 리포트 | 기어 P → 증상 화면 → 정비소 리포트 → PDF로 저장 | 조작 없음 |
+| ⑥ 수리 후 확인 | 기어 P → 설정 → 시연 데이터 불러오기 → 증상·리포트 → "(시연)" 증상 | 조작 없음 |
 
-설계값(모두 상수로 분리, "설계값, 실측으로 조정 필요" 주석): 수동 기록 60초·추정 지점(브레이크 구간 우선, 앞뒤 5초), 포함률 75%, 배율 2배, 최소 기록 2개, 최소 평소 주행 30초, 속도 구간 10km/h, 핸들 15°/90°, 온도 10°C/25°C, 자동 포착 지연 3초·쿨다운 30초, 재발 판단 -6dB.
+- 이번 캡처는 curl로 조작했고, 그동안 1초마다 `POST /browser/session?client=<id>`를 함께 보냈다.
+- 시연이 끝나면 설정 → 시연 데이터 지우기.
+- 장면별 시연 순서와 대사는 [docs/demo-scenario.md](docs/demo-scenario.md).
 
-## 5. 개인정보
-- 주행을 시작하면 직전 1분 소리만 기기 안 메모리에 보관합니다. 버튼을 누르거나 자동 포착 조건일 때만 저장하며, 저장한 소리는 앱 내부 저장소에만 둡니다.
-- 기록 목록에서 기록별 삭제, 설정에서 "녹음 파일 모두 삭제"가 가능합니다.
-- 사람 말소리 무음 처리와 서버·QR 공유는 [`docs/roadmap.md`](docs/roadmap.md)의 2차 계획입니다.
+## 빌드와 단위 테스트
 
-## 6. 단위 테스트
+- Gradle 8.10.2 wrapper, AGP 8.8.2, Kotlin 2.0.0, JDK 17, Jetpack Compose
+- compileSdk 35 / targetSdk 34 / minSdk 28
+- Pleos Vehicle 2.3.2, Pleos TextToSpeech 3.3.1, Room 2.6.1(KSP)
+- `local.properties`에 `sdk.dir=<Android SDK 경로>`를 적는다.
 
-`./gradlew testDebugUnitTest` — 35개
-- `ConditionsTest`: 속도 구간, 규칙 매칭(범주 안 OR·범주끼리 AND), 75%/2배 채택, 기록·기준 부족, 10초 창, 수리 후 통과 횟수, 문장 생성, 규칙 저장 형식
-- `AutoCaptureJudgeTest`: 시작 +3초 저장, 조건이 이어져도 재저장 없음, 30초 쿨다운, 실패 시 쿨다운 해제, 예약 중 중복 없음
-- `SoundAnalysisTest`: 대역 에너지 이론값(±0.2dB), Nyquist 초과 대역, -20dB 감소, 재발 분류
-- `PointEstimateTest`: 1초 RMS, 브레이크 구간 우선 추정, 브레이크 없을 때 전체 최대, 대표 구간 10초 유지(가장자리), 조건 기록 정렬, 정차 30초 전 끼익 찾기
-- `GroupingTest`: 시연·실제 섞기 차단, 수리 날짜가 있을 때만 수리 전/후 묻기, 고른 값 우선
-- `RuleStatusTest`: 안 맞는 조건 문장(25°C에서 "바깥 온도가 10도 이하가 아님"), 상태 한 줄, 규칙 문장
-- `RecordingPolicyTest`: 주행 시작 자동 기록 조건(설정·화면 보임·기어·이미 켜짐), 기록 꺼짐으로 못 저장한 조건은 쿨다운 없이 재시도
-- `DemoPlanTest`: 시연 데이터가 의도한 공통 조건과 수리 후 -19dB를 실제로 만드는지
+```bash
+JAVA_HOME=<JDK 17 경로> ./gradlew assembleDebug testDebugUnitTest
+```
 
-### 개발 방식
-- 브랜치·커밋·버전 규칙: [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) (GitHub Flow, Conventional Commits, 유의적 버전)
-- 단위 테스트 35개, 커밋 전 `./gradlew testDebugUnitTest` 통과 확인
-- 플랫폼 동작 판단은 추측이 아니라 `../verify-app` 실측 결과(verify 5-x)를 근거로 합니다
+```bash
+JAVA_HOME=<JDK 17 경로> ./gradlew assembleRelease
+```
 
-## 7. 프로젝트 구조
+단위 테스트는 35개다. 조건 계산, 자동 포착 시점, 소리 난 지점 추정, 대역 에너지, 시연 데이터 결과를 확인한다. 파일별 내용은 [docs/verification.md](docs/verification.md).
+
+## 구조
 
 ```
 app/src/main/java/ai/symptomnote/
-├── App.kt                    차량 신호·자동 포착 시작
-├── core/                     안드로이드 의존 없는 순수 로직(단위 테스트 대상)
-│   ├── Conditions.kt         조건 후보·공통 조건·통과 횟수·문장
-│   ├── AutoCaptureJudge.kt   자동 포착 판단(시작 순간, 3초, 30초)
-│   └── SoundAnalysis.kt      Kotlin FFT, 대역 에너지, 수리 전후 비교
-├── audio/Audio.kt            링 버퍼(RingRecorder), WAV, 재생
-├── vehicle/                  VehicleSignals(표준+Pleos 구독, 1초 요약), UxWatcher, Speaker(TTS+포커스), WindowChecker
-├── service/                  RecordingService(마이크 FGS), RecordSaver, AutoCaptureEngine, SymptomAnalyzer
-├── data/Db.kt                Room: DriveSecond, Recording(+스냅샷), Symptom
-├── gleo/GleoReceiver.kt      글레오 함수
-├── demo/                     시연 데이터(DemoPlan: 순수, DemoData: 저장)
-└── ui/                       주차 화면(MainActivity …), 주행 화면(DrivingRecordActivity)
-app/src/main/assets/schema.json   글레오 함수 등록
-docs/                             platform-findings.md, roadmap.md, demo-scenario.md, CONTRIBUTING.md
+├── App.kt                      앱 시작 시 차량 신호 구독과 자동 포착 시작
+├── Settings.kt                 설정 값(주행 시작 자동 기록)
+├── audio/Audio.kt              직전 60초 링 버퍼(RingRecorder), WAV 저장, 재생
+├── core/                       안드로이드 의존 없는 계산(단위 테스트 대상)
+│   ├── Conditions.kt           조건 후보, 공통 조건, 통과 횟수, 화면 문장
+│   ├── PointEstimate.kt        소리 난 지점 추정, 대표 구간 자르기
+│   ├── AutoCaptureJudge.kt     자동 포착 판단(시작 순간, 3초, 30초)
+│   ├── SoundAnalysis.kt        FFT, 대역 에너지, 수리 전후 비교
+│   ├── Grouping.kt             증상 묶기 규칙(시연·실제 섞기 막기)
+│   └── RecordingPolicy.kt      주행 시작 자동 기록 조건
+├── data/Db.kt                  Room: 1초 주행 기록, 녹음 기록, 증상
+├── service/
+│   ├── Recorder.kt             마이크 서비스, 수동·자동 저장
+│   └── SymptomAnalyzer.kt      증상 화면·리포트용 분석 묶음
+├── vehicle/
+│   ├── VehicleSignals.kt       표준·Pleos 신호 구독, 1초 요약
+│   ├── Platform.kt             주행 제한 감지, TTS와 오디오 포커스
+│   └── WindowChecker.kt        창문 점검 흐름
+├── gleo/GleoReceiver.kt        글레오 조회 함수 두 개
+├── demo/
+│   ├── DemoPlan.kt             시연 데이터 설계(순수 계산)
+│   └── DemoData.kt             시연 데이터 저장·삭제
+└── ui/
+    ├── MainActivity.kt         주차 화면(홈과 화면 전환)
+    ├── DrivingRecordActivity.kt 주행 중 큰 버튼 화면
+    ├── RecordScreens.kt        기록 목록, 증상 묶기, 증상 목록
+    ├── SymptomScreens.kt       증상 상세, 리포트, PDF
+    ├── OtherScreens.kt         창문 점검, 설정
+    └── Common.kt               색, 버튼, 패널 같은 공통 요소
+app/src/main/assets/schema.json 글레오 함수 등록
+app/src/test/                   단위 테스트 35개
+docs/                           근거 기록, 플랫폼 확인 사항, 시연 순서, 발전 계획, 개발 규칙
+apk/                            제출용 APK
 ```
 
-## 8. 에뮬레이터에서 확인한 것과 한계
-- 확인 결과는 최종 보고 표와 커밋 메시지를 참고하세요. 요약:
-  - 가린 상태 녹음 유지(`silenced:false`), "기록 중" 표시 +38ms, 저장 +325ms, TTS 포커스 요청 `GRANTED`·onDone 뒤 반납
-  - 기어 D에서 주차 화면은 시스템에 가려지고 큰 버튼 화면은 사용 가능
-  - 글레오: schema.json 로드(`Loaded schema.json from ai.symptomnote`), 두 action 형태 모두 응답
-- 창문 점검: 에뮬레이터에는 실제 창문이 없어 창문 소리는 녹음되지 않습니다. 제어 뒤 값 변화는 verify 5-1(11-05)에서는 없었고, 2026-11-13 이 앱 시험에서는 목표 값(5)에 도달했습니다(원인 미확인).
-- 에뮬레이터 바깥 온도는 25°C 고정이라 "차가운 날" 조건은 시연 데이터에서만 보입니다.
+## 에뮬레이터에서 확인한 것과 하지 못한 것
+
+확인한 것
+
+- 기어 D에서 주차 화면은 시스템이 가리고, 큰 버튼 화면은 쓸 수 있다. 내비와 반반으로 나눠도 동작한다.
+- 다른 앱이 화면을 가려도 녹음이 이어진다.
+- 버튼을 누르고 "기록 중"이 그려질 때까지 29ms, 저장 완료까지 69ms가 걸렸다(이번 캡처 때 로그).
+- "기록했어요" 음성 앞에 오디오 포커스를 받고, 음성이 끝나면 돌려준다.
+- 자동 포착은 조건이 맞기 시작하고 3초 뒤 저장됐다(09:21:36 조건 시작 → 09:21:39 저장).
+- 실측 근거 표는 [docs/verification.md](docs/verification.md).
+
+하지 못한 것, 다르게 동작한 것
+
+- 녹음 중에는 글레오 음성 호출이 동작하지 않는다. 글레오가 다른 앱이 마이크를 쓰는 것을 보고 호출을 포기한다. 그래서 글레오 함수는 녹음이 꺼진 상태에서 쓰는 조회용만 두었다. 자세한 내용은 [docs/platform-findings.md](docs/platform-findings.md).
+- 창문 점검은 실차 전제다. 에뮬레이터에는 실제 창문이 없어 창문 소리가 녹음되지 않는다. 창문 제어 뒤 값 변화도 한 번은 없었고, 다른 날에는 목표 값에 도달했다. 원인은 확인하지 못했다.
+- 이 에뮬레이터의 동승석 착석 값은 반대로 온다(비어 있으면 `true`). 앱은 `WindowChecker.kt`의 상수 하나로 뒤집어 읽는다. 실차에서는 다시 확인해야 한다.
+- 에뮬레이터의 바깥 온도는 25°C로 고정이다. 그래서 "차가운 날" 조건은 시연 데이터에서만 볼 수 있다.
+- 이번 캡처 때는 PC 마이크로 소리를 넣지 않았다. 홈의 소리 크기 막대는 비어 있었고, ②의 추정 지점은 거의 무음 속에서 가장 큰 1초다.
+- 실차에서는 시험하지 못했다. 공통 조건 기준(75%, 2배)과 자동 포착 시간은 실차 데이터로 다시 맞춰야 한다.
+
+## 개발 방식
+
+브랜치, 커밋 메시지, 버전 규칙은 [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)에 있다. GitHub Flow, Conventional Commits, 유의적 버전을 쓴다. 커밋 전에 `./gradlew testDebugUnitTest`가 통과하는지 확인한다.
