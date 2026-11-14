@@ -70,14 +70,16 @@ object WavIo {
 }
 
 /**
- * 직전 10초 링 버퍼 녹음 엔진(verify 5-3, 5-17).
+ * 직전 60초 링 버퍼 녹음 엔진(verify 5-3, 5-17). 48kHz 모노 16비트로 약 5.6MB.
+ * - 수동 기록은 60초 전체를, 자동 포착·창문 점검은 마지막 10초만 저장한다.
  * - 48kHz 를 먼저 열고, 안 되면 44.1kHz(8~16kHz 대역 분석을 위해 16kHz 는 쓰지 않음).
  * - RecordingService(마이크 FGS) 안에서만 start 한다. 프로세스 전역 object 인 이유: 주행 화면·자동 포착이 같은 버퍼를 읽음.
- * - 원본 소리는 기기 안(filesDir/rec)에만 저장하고, 직전 10초만 메모리에 둔다.
+ * - 원본 소리는 기기 안(filesDir/rec)에만 저장하고, 직전 60초만 메모리에 둔다.
  */
 object RingRecorder {
     val RATES = listOf(48_000, 44_100)
-    const val RING_SECONDS = 10
+    const val RING_SECONDS = 60
+    const val CLIP_SECONDS = 10
 
     data class Saved(val ok: Boolean, val message: String, val sampleRate: Int = 0, val peak: Int = 0)
 
@@ -162,23 +164,30 @@ object RingRecorder {
         }
     }
 
-    /** 링 버퍼 직전 최대 10초를 시간순으로 WAV 저장. 엔진이 꺼져 있으면 저장하지 않는다. */
-    fun save(file: File): Saved {
-        if (thread == null) return Saved(false, "기록이 꺼져 있어요")
+    /** 링 버퍼 직전 최대 [lastSec]초를 시간순으로 복사. 엔진이 꺼져 있거나 비어 있으면 null. */
+    fun grab(lastSec: Int): WavIo.Pcm16? {
+        if (thread == null) return null
         val r = rate
-        val snap = synchronized(lock) {
-            val s = ShortArray(ringFilled)
-            val start = (ringWrite - ringFilled + ring.size) % ring.size
-            for (i in 0 until ringFilled) s[i] = ring[(start + i) % ring.size]
-            s
+        val s = synchronized(lock) {
+            val n = minOf(ringFilled, r * lastSec)
+            val start = (ringWrite - n + ring.size) % ring.size
+            ShortArray(n) { ring[(start + it) % ring.size] }
         }
-        if (snap.isEmpty()) return Saved(false, "아직 녹음된 소리가 없어요")
-        return try {
-            WavIo.write(file, snap, snap.size, r)
-            Saved(true, "${file.name} · ${"%.1f".format(snap.size.toDouble() / r)}초", r, WavIo.peak(snap))
-        } catch (e: Throwable) {
-            Saved(false, "저장 실패: ${e.message}")
-        }
+        return if (s.isEmpty()) null else WavIo.Pcm16(r, s)
+    }
+
+    /** 링 버퍼 직전 최대 [lastSec]초를 WAV 저장(자동 포착·창문 점검은 10초). 엔진이 꺼져 있으면 저장하지 않는다. */
+    fun save(file: File, lastSec: Int = CLIP_SECONDS): Saved {
+        if (thread == null) return Saved(false, "기록이 꺼져 있어요")
+        val pcm = grab(lastSec) ?: return Saved(false, "아직 녹음된 소리가 없어요")
+        return write(file, pcm.samples, pcm.sampleRate)
+    }
+
+    fun write(file: File, s: ShortArray, r: Int): Saved = try {
+        WavIo.write(file, s, s.size, r)
+        Saved(true, "${file.name} · ${"%.1f".format(s.size.toDouble() / r)}초", r, WavIo.peak(s))
+    } catch (e: Throwable) {
+        Saved(false, "저장 실패: ${e.message}")
     }
 }
 
