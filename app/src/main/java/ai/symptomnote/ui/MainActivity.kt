@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,6 +94,8 @@ class MainActivity : ComponentActivity() {
     private fun Root() {
         var screen by remember { mutableStateOf<Screen>(Screen.Home) }
         val restricted by ux.restricted.collectAsStateWithLifecycle()
+        // 주행이 시작되면 시스템이 이 화면 전체를 "주행 중에는 사용할 수 없습니다"로 가리므로 큰 버튼 화면(DO)을 바로 띄운다.
+        LaunchedEffect(restricted) { if (restricted) openDrivingScreen() }
         BackHandler(enabled = screen != Screen.Home) {
             screen = when (val s = screen) { is Screen.Report -> Screen.SymptomDetail(s.id); is Screen.SymptomDetail -> Screen.Symptoms; else -> Screen.Home }
         }
