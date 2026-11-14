@@ -54,10 +54,15 @@ data class Recording(
     /** 수동 기록: 추정 지점이 버튼을 누른 때보다 몇 초 전인가. */
     val pointAgoSec: Int? = null,
     /** 수동 기록: 브레이크 구간 안에서 찾았는가(false = 60초 전체에서 가장 큰 소리). */
-    val pointByBrake: Boolean? = null
+    val pointByBrake: Boolean? = null,
+    /** 수리 날짜가 있는 증상에 넣을 때 사용자가 고른 구분(true = 수리 후 재발, false = 수리 전 기록). null = 기록 시각으로 판단. */
+    val afterRepair: Boolean? = null
 ) {
     /** 이 기록이 가진 파일 전부(삭제용). */
     fun files(): List<String> = listOfNotNull(file, fullFile, condFile)
+
+    /** 이 증상의 수리 날짜 기준으로 수리 후 기록인가(사용자가 고른 값 우선). */
+    fun isAfterRepair(repairedAt: Long?): Boolean = ai.symptomnote.core.Grouping.isAfterRepair(t, repairedAt, afterRepair)
 }
 
 /** 증상(케이스). rule 은 자동 포착을 켤 때 고정한 공통 조건(Conditions.encode). */
@@ -89,7 +94,9 @@ interface NoteDao {
     @Query("SELECT * FROM Recording WHERE symptomId = :id ORDER BY t") suspend fun recordingsOfNow(id: Long): List<Recording>
     @Query("SELECT * FROM Recording WHERE source = 'WINDOW' ORDER BY t") fun windowChecks(): Flow<List<Recording>>
     @Query("SELECT * FROM Recording WHERE source = 'WINDOW' ORDER BY t") suspend fun windowChecksNow(): List<Recording>
-    @Query("UPDATE Recording SET symptomId = :sid WHERE id IN (:ids)") suspend fun assign(ids: List<Long>, sid: Long?)
+    /** 증상에 넣거나(sid) 뺀다(sid = null). 수리 전/후 구분도 함께 정한다(null = 기록 시각으로 판단). */
+    @Query("UPDATE Recording SET symptomId = :sid, afterRepair = :afterRepair WHERE id IN (:ids)")
+    suspend fun assign(ids: List<Long>, sid: Long?, afterRepair: Boolean? = null)
     @Query("SELECT * FROM Recording WHERE file IS NOT NULL") suspend fun withFiles(): List<Recording>
     @Query("UPDATE Recording SET file = NULL, fullFile = NULL, condFile = NULL") suspend fun clearFiles()
 
@@ -109,11 +116,16 @@ interface NoteDao {
     @Query("DELETE FROM DriveSecond WHERE demo = 1") suspend fun deleteDemoSeconds()
 }
 
-@Database(entities = [DriveSecond::class, Recording::class, Symptom::class], version = 2, exportSchema = false)
+@Database(entities = [DriveSecond::class, Recording::class, Symptom::class], version = 3, exportSchema = false)
 abstract class AppDb : RoomDatabase() {
     abstract fun dao(): NoteDao
 
     companion object {
+        /** 2 → 3: 수리 전/후 구분을 사용자가 고른 값. */
+        private val M2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) = db.execSQL("ALTER TABLE Recording ADD COLUMN afterRepair INTEGER")
+        }
+
         /** 1 → 2: 수동 기록 60초(전체 소리, 조건 기록, 추정 지점) 열 추가. 기존 기록은 그대로 둔다. */
         private val M1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -127,7 +139,7 @@ abstract class AppDb : RoomDatabase() {
         @Volatile private var inst: AppDb? = null
         fun get(c: Context): AppDb = inst ?: synchronized(this) {
             inst ?: Room.databaseBuilder(c.applicationContext, AppDb::class.java, "symptomnote.db")
-                .addMigrations(M1_2).build().also { inst = it }
+                .addMigrations(M1_2, M2_3).build().also { inst = it }
         }
     }
 }

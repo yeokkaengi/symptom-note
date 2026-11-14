@@ -101,13 +101,13 @@ object SymptomAnalyzer {
     suspend fun load(c: Context, s: Symptom, recs: List<Recording>): SymptomInfo {
         val dao = AppDb.get(c).dao()
         val mine = recs.filter { it.source != Source.WINDOW }
-        val beforeRecs = s.repairedAt?.let { r -> mine.filter { it.t < r } } ?: mine
+        val beforeRecs = mine.filter { !it.isAfterRepair(s.repairedAt) }
         val analysis = Conditions.analyze(beforeRecs.map { it.snap }, baseline(c))
         val rule = Conditions.decode(s.rule).ifEmpty { analysis.rule }
         val withFile = beforeRecs.filter { it.file != null && File(it.file).exists() }
         val rep = withFile.firstOrNull { it.id == s.representativeId } ?: withFile.lastOrNull()
         val repair = s.repairedAt?.let { at ->
-            val after = mine.filter { it.t >= at }
+            val after = mine.filter { it.isAfterRepair(at) }
             val passes = Conditions.countPasses(rule, dao.secondsFrom(at).map { it.s })
             val beforeBands = rep?.file?.let { bands(it) }
             val changes = if (beforeBands == null) emptyList() else after.mapNotNull { r ->

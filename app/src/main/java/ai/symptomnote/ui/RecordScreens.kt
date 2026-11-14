@@ -2,6 +2,7 @@ package ai.symptomnote.ui
 
 import ai.symptomnote.audio.Player
 import ai.symptomnote.core.Conditions
+import ai.symptomnote.core.Grouping
 import ai.symptomnote.data.AppDb
 import ai.symptomnote.data.Recording
 import ai.symptomnote.data.Source
@@ -102,6 +103,8 @@ fun RecordsScreen(back: () -> Unit, openSymptom: (Long) -> Unit) {
     val sel = remember { mutableStateListOf<Long>() }
     var grouping by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<Recording?>(null) }
+    var groupError by remember { mutableStateOf<String?>(null) }
+    var askRepair by remember { mutableStateOf<Symptom?>(null) }
     val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -119,20 +122,42 @@ fun RecordsScreen(back: () -> Unit, openSymptom: (Long) -> Unit) {
         }
     }
 
-    // 실제 기록을 시연 증상에 섞지 않는다(시연 증상은 수리 완료 상태라 새 기록이 "수리 후 재발"로 분류되고 규칙도 안 바뀜).
-    val realSelected = recs.any { it.id in sel && !it.demo }
-    if (grouping) GroupDialog(symptoms.filter { !(realSelected && it.demo) }, onDismiss = { grouping = false }) { existing, newName ->
+    /** 실제로 묶는다. afterRepair: 수리 날짜가 있는 증상에 넣을 때 사용자가 고른 구분(그 밖에는 null). */
+    fun group(existing: Symptom?, newName: String, afterRepair: Boolean?) {
         val ids = sel.toList()
+        val allDemo = recs.filter { it.id in ids }.all { it.demo }
         scope.launch {
             val sid = withContext(Dispatchers.IO) {
-                val id = existing ?: dao.insertSymptom(Symptom(name = newName.trim(), createdAt = System.currentTimeMillis()))
-                dao.assign(ids, id)
+                val id = existing?.id ?: dao.insertSymptom(Symptom(name = newName.trim(), createdAt = System.currentTimeMillis(), demo = allDemo))
+                dao.assign(ids, id, afterRepair)
                 SymptomAnalyzer.refreshRule(ctx, id)
                 id
             }
-            sel.clear(); grouping = false
+            sel.clear(); grouping = false; askRepair = null
             openSymptom(sid)
         }
+    }
+
+    if (grouping) GroupDialog(symptoms, error = groupError, onDismiss = { grouping = false; groupError = null }) { existing, newName ->
+        // 시연 데이터와 실제 기록은 섞지 않는다(시연 증상은 수리 완료 상태라 실제 기록이 "수리 후 재발"로 분류되고 규칙도 시연 조건에 묶임).
+        groupError = Grouping.mixError(existing?.demo, recs.filter { it.id in sel }.map { it.demo })
+        when {
+            groupError != null -> Unit
+            existing != null && Grouping.needsRepairChoice(existing.repairedAt) -> { grouping = false; askRepair = existing }
+            else -> group(existing, newName, null)
+        }
+    }
+    askRepair?.let { s ->
+        AlertDialog(onDismissRequest = { askRepair = null },
+            title = { Text("'${s.name}'은 ${fmtDate(s.repairedAt!!)}에 수리 완료로 기록돼 있어요", style = TextStyle(fontSize = 28.sp)) },
+            text = { Body("고른 기록 ${sel.size}개를 어떻게 넣을까요?\n· 수리 전 기록: 공통 조건 계산에 써요\n· 수리 후 재발: 수리 후 확인에 써요") },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BigButton("수리 전 기록으로 추가", primary = false) { group(s, "", false) }
+                    BigButton("수리 후 재발로 추가") { group(s, "", true) }
+                }
+            },
+            dismissButton = { BigButton("취소", primary = false) { askRepair = null } })
     }
     deleting?.let { r ->
         AlertDialog(onDismissRequest = { deleting = null },
@@ -151,15 +176,18 @@ fun RecordsScreen(back: () -> Unit, openSymptom: (Long) -> Unit) {
 
 /** 증상 이름 붙이기: 새 증상(추천 이름 버튼 + 직접 입력) 또는 기존 증상에 추가. */
 @Composable
-private fun GroupDialog(symptoms: List<Symptom>, onDismiss: () -> Unit, onPick: (Long?, String) -> Unit) {
+private fun GroupDialog(symptoms: List<Symptom>, error: String?, onDismiss: () -> Unit, onPick: (Symptom?, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     AlertDialog(onDismissRequest = onDismiss,
         title = { Text("증상으로 묶기", style = TextStyle(fontSize = 30.sp)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                error?.let { Text(it, color = C.Red, style = TextStyle(fontSize = 26.sp)) }
                 if (symptoms.isNotEmpty()) {
                     Small("기존 증상에 추가")
-                    symptoms.take(4).forEach { s -> BigButton(s.name, Modifier.fillMaxWidth(), primary = false) { onPick(s.id, s.name) } }
+                    symptoms.take(4).forEach { s ->
+                        BigButton(s.name + if (s.demo) " (시연)" else "", Modifier.fillMaxWidth(), primary = false) { onPick(s, s.name) }
+                    }
                 }
                 Small("새 증상 이름")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
