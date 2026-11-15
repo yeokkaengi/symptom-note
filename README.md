@@ -78,7 +78,7 @@
 
 ## APK
 
-`apk/yeokkaengi_증상노트_release.apk` (assembleRelease, 디버그 키 서명, versionName 1.0.0, 패키지 `ai.symptomnote`)
+`apk/yeokkaengi_증상노트_release.apk` (assembleRelease, 디버그 키 서명, versionName 1.1.0, 패키지 `ai.symptomnote`)
 
 ```bash
 adb install -r apk/yeokkaengi_증상노트_release.apk
@@ -95,9 +95,8 @@ adb install -r apk/yeokkaengi_증상노트_release.apk
 | 증상과 공통 조건 | 기록을 묶으면 조건별로 증상 기록 비율과 평소 주행 비율을 비교한다 |
 | 자동 포착 | 공통 조건이 맞기 시작하면 3초 뒤 조용히 저장한다 |
 | 정비소 리포트 | 한 장 요약, PDF 저장 |
-| 수리 후 확인 | 같은 조건 통과 횟수, 수리 전후 특징 대역 비교 |
+| 수리 후 확인 | 같은 조건 통과 횟수, 수리 전후 특징 대역 비교, 수리 전·후 녹음 재생 |
 | 글레오 | 녹음이 꺼진 상태에서 최근 증상 요약, 기록 시작 방법 안내 |
-| 창문 점검 | 운전석 창문을 움직이며 소리를 남기는 실차 전제 기능 |
 | 개인정보 | 소리는 기기 안에만 둔다. 기록별 삭제, 녹음 파일 한 번에 삭제 |
 
 ## 테스트 환경 및 필요한 설정
@@ -105,10 +104,10 @@ adb install -r apk/yeokkaengi_증상노트_release.apk
 | 항목 | 값 |
 |---|---|
 | 에뮬레이터 | Pleos Connect Emulator 2.1.0 AVD (Android 14 / API 34, 앱 사용자 10), 화면 2560×1440 |
-| 마이크 | AVD Extended controls → Microphone → "Virtual microphone uses host audio input" 켜기. 끄면 녹음이 거의 무음이다 |
+| 마이크 | AVD Extended controls → Microphone → "Enable host microphone access" 켜기. 끄면 녹음이 거의 무음이다 |
 | Virtual Console | `adb forward tcp:8088 tcp:8088` 후 브라우저에서 `http://127.0.0.1:8088/` |
 | 실행 중 요청 권한 | `RECORD_AUDIO`, `POST_NOTIFICATIONS`, `android.car.permission.CAR_SPEED` |
-| 선언만 하는 권한 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`, `CAR_POWERTRAIN`, `CAR_EXTERIOR_ENVIRONMENT`, `pleos.car.permission.CAR_DRIVE · CAR_WINDOWS · CAR_LIGHTS · CAR_SEATS · CONTROL_CAR_WINDOWS · TTS_SERVICE` |
+| 선언만 하는 권한 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`, `CAR_POWERTRAIN`, `CAR_EXTERIOR_ENVIRONMENT`, `pleos.car.permission.CAR_DRIVE · CAR_WINDOWS(와이퍼) · CAR_LIGHTS · TTS_SERVICE` |
 | 권한 미리 주기(선택) | `adb shell pm grant --user 10 ai.symptomnote android.permission.RECORD_AUDIO` (나머지 두 개도 같은 방식) |
 | 네트워크·계정 | 필요 없음 |
 
@@ -164,8 +163,7 @@ app/src/main/java/ai/symptomnote/
 │   └── SymptomAnalyzer.kt      증상 화면·리포트용 분석 묶음
 ├── vehicle/
 │   ├── VehicleSignals.kt       표준·Pleos 신호 구독, 1초 요약
-│   ├── Platform.kt             주행 제한 감지, TTS와 오디오 포커스
-│   └── WindowChecker.kt        창문 점검 흐름
+│   └── Platform.kt             주행 제한 감지, TTS와 오디오 포커스
 ├── gleo/GleoReceiver.kt        글레오 조회 함수 두 개
 ├── demo/
 │   ├── DemoPlan.kt             시연 데이터 설계(순수 계산)
@@ -175,7 +173,7 @@ app/src/main/java/ai/symptomnote/
     ├── DrivingRecordActivity.kt 주행 중 큰 버튼 화면
     ├── RecordScreens.kt        기록 목록, 증상 묶기, 증상 목록
     ├── SymptomScreens.kt       증상 상세, 리포트, PDF
-    ├── OtherScreens.kt         창문 점검, 설정
+    ├── OtherScreens.kt         설정
     └── Common.kt               색, 버튼, 패널 같은 공통 요소
 app/src/main/assets/schema.json 글레오 함수 등록
 app/src/test/                   단위 테스트 35개
@@ -197,8 +195,7 @@ apk/                            제출용 APK
 하지 못한 것, 다르게 동작한 것
 
 - 녹음 중에는 글레오 음성 호출이 동작하지 않는다. 글레오가 다른 앱이 마이크를 쓰는 것을 보고 호출을 포기한다. 그래서 글레오 함수는 녹음이 꺼진 상태에서 쓰는 조회용만 두었다. 자세한 내용은 [docs/platform-findings.md](docs/platform-findings.md).
-- 창문 점검은 실차 전제다. 에뮬레이터에는 실제 창문이 없어 창문 소리가 녹음되지 않는다. 창문 제어 뒤 값 변화도 한 번은 없었고, 다른 날에는 목표 값에 도달했다. 원인은 확인하지 못했다.
-- 이 에뮬레이터의 동승석 착석 값은 반대로 온다(비어 있으면 `true`). 앱은 `WindowChecker.kt`의 상수 하나로 뒤집어 읽는다. 실차에서는 다시 확인해야 한다.
+- 차가 창문을 움직이며 소리를 녹음하는 자가 점검은 검토했지만 앱 목적(주행 중 실제 소리)과 맞지 않아 뺐다. 창문·시트 제어 시험 결과는 [docs/verification.md](docs/verification.md)에 남겨 두었다.
 - 에뮬레이터의 바깥 온도는 25°C로 고정이다. 그래서 "차가운 날" 조건은 시연 데이터에서만 볼 수 있다.
 - 이번 캡처 때는 PC 마이크로 소리를 넣지 않았다. 홈의 소리 크기 막대는 비어 있었고, ②의 추정 지점은 거의 무음 속에서 가장 큰 1초다.
 - 실차에서는 시험하지 못했다. 공통 조건 기준(75%, 2배)과 자동 포착 시간은 실차 데이터로 다시 맞춰야 한다.
