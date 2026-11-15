@@ -52,8 +52,7 @@ object RecordSaver {
         val f = File(recDir(c), "${source.lowercase()}_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date(now))}.wav")
         val s = RingRecorder.save(f)
         if (!s.ok) return Result(false, s.message)
-        val r = Recording(t = now, file = f.absolutePath, source = source, snap = snap, sampleRate = s.sampleRate, peak = s.peak,
-            symptomId = autoFor, autoForSymptomId = autoFor)
+        val r = Recording.captured(now, f.absolutePath, source, snap, s.sampleRate, s.peak, autoFor)
         val id = AppDb.get(c).dao().insertRecording(r)
         Log.i(TAG, "기록 저장 source=$source autoFor=$autoFor ${s.message} snap=$snap")
         return Result(true, s.message, r.copy(id = id))
@@ -129,7 +128,7 @@ object AutoCaptureEngine {
                 main.post {
                     // 규칙이 같으면 판단기(쿨다운 상태)를 그대로 둔다.
                     watches = list.mapNotNull { s ->
-                        val rule = Conditions.decode(s.rule)
+                        val rule = ai.symptomnote.core.RepairFlow.watchRule(s)
                         if (rule.isEmpty()) null
                         else s.id to (watches[s.id]?.takeIf { it.rule == rule } ?: Watch(s, rule))
                     }.toMap()

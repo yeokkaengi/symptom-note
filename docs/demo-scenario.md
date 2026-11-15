@@ -1,6 +1,6 @@
 # 시연 순서
 
-준비: `Pleos_Connect_v2.1.0` AVD, AVD Extended controls → Microphone → "Virtual microphone uses host audio input" 켜기, 증상노트 설치(README 참고), Virtual Console 열어 두기.
+준비: `Pleos_Connect_v2.1.0` AVD, AVD Extended controls → Microphone → "Enable host microphone access" 켜기, 증상노트 설치(README 참고), Virtual Console 열어 두기.
 
 | # | 하는 일 | 화면에서 보이는 것 |
 |---|---|---|
@@ -26,4 +26,3 @@
 - 에뮬레이터의 바깥 온도는 25°C로 고정되어 있어, 실제 주행으로 만든 증상에는 "차가운 날" 조건이 나오지 않습니다.
 - 평소 주행 기록이 30초 미만이면 기준률을 계산하지 않습니다(화면에 안내). 3번에서 1분 이상 달려 주세요.
 - 녹음 중에는 글레오 음성 호출이 동작하지 않습니다(`docs/platform-findings.md`). 글레오 시연은 기록을 끈 상태에서 "증상노트에서 최근 증상 알려줘".
-- 창문 점검(홈 → 창문 점검)은 실차 전제 기능입니다. 흐름만 보여 줍니다.

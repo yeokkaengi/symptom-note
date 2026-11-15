@@ -2,11 +2,9 @@ package ai.symptomnote.ui
 
 import ai.symptomnote.Settings
 import ai.symptomnote.audio.Player
-import ai.symptomnote.audio.RingRecorder
 import ai.symptomnote.data.AppDb
 import ai.symptomnote.demo.DemoData
 import ai.symptomnote.vehicle.VehicleSignals
-import ai.symptomnote.vehicle.WindowChecker
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,43 +29,6 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-/** 정차 자가 점검 · 창문(실차 전제 기능). */
-@Composable
-fun WindowCheckScreen(back: () -> Unit) {
-    val ctx = LocalContext.current
-    val checker = remember { WindowChecker(ctx) }
-    val steps by checker.steps.collectAsStateWithLifecycle()
-    val checks by remember { AppDb.get(ctx).dao().windowChecks() }.collectAsStateWithLifecycle(emptyList())
-    val running by RingRecorder.running.collectAsStateWithLifecycle()
-    val live by VehicleSignals.live.collectAsStateWithLifecycle()
-    var confirm by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        TopBar("창문 점검", back)
-        Panel {
-            Title("실차 전제 기능")
-            Body("운전석 창문을 중간까지 움직이며 나는 소리를 녹음하고, 첫 점검(기준)과 비교해요. " +
-                "에뮬레이터에는 실제 창문이 없어 창문 소리가 녹음되지 않아요. 제어 뒤 값 변화도 시험 때마다 달랐어요" +
-                "(verify 5-1: 값 그대로 0, 11-13 증상노트 시험: 목표 값 도달). " +
-                "그래서 이 화면은 흐름만 보여 주며, 소리 비교는 실제 차량에서 의미가 있어요.", C.Sub)
-            Body("동승석에 사람이 앉아 있으면 실행하지 않아요.", C.Yellow)
-            Body("녹음 ${if (running) "켜짐" else "꺼짐(홈에서 기록 시작 필요)"} · 기어 ${if (live.parked) "P" else "P 아님"}")
-            BigButton("점검 시작", enabled = running && live.parked && !checker.running) { confirm = true }
-        }
-        if (steps.isNotEmpty()) Panel { Title("진행"); steps.forEach { Body(it) } }
-        if (checks.isNotEmpty()) Panel {
-            Title("점검 녹음 (${checks.size})")
-            checks.reversed().forEachIndexed { i, r ->
-                RecordRow(r, if (i == checks.size - 1) "기준" else null, null)
-            }
-        }
-    }
-    if (confirm) AlertDialog(onDismissRequest = { confirm = false },
-        title = { Text("창문을 움직일까요?", style = TextStyle(fontSize = 28.sp)) },
-        text = { Body("운전석 창문을 중간까지 내렸다가 원래 위치로 되돌려요. 창문 주변에 손이나 물건이 없는지 확인하세요.") },
-        confirmButton = { BigButton("확인") { confirm = false; checker.run() } },
-        dismissButton = { BigButton("취소", primary = false) { confirm = false } })
-}
 
 /** 설정: 시연 데이터, 녹음 파일 삭제, 신호 상태. */
 @Composable

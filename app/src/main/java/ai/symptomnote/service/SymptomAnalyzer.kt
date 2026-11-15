@@ -5,6 +5,7 @@ import ai.symptomnote.core.Analysis
 import ai.symptomnote.core.BandChange
 import ai.symptomnote.core.Cond
 import ai.symptomnote.core.Conditions
+import ai.symptomnote.core.RepairFlow
 import ai.symptomnote.core.Snapshot
 import ai.symptomnote.core.SoundAnalysis
 import ai.symptomnote.data.AppDb
@@ -26,7 +27,9 @@ data class RepairInfo(
     val before: Recording?,
     /** 수리 전 특징 대역. */
     val band: Int?,
-    val changes: List<Pair<Recording, BandChange>>
+    val changes: List<Pair<Recording, BandChange>>,
+    /** 재생할 수리 후 녹음: 파일이 남아 있는 수리 후 기록 중 가장 최근 것. 없으면 null. */
+    val latestAfter: Recording? = null
 ) {
     val avgDelta: Double? get() = changes.takeIf { it.isNotEmpty() }?.map { it.second.deltaDb }?.average()
     val recurrences get() = changes.filter { it.second.recurrence }
@@ -100,7 +103,7 @@ object SymptomAnalyzer {
 
     suspend fun load(c: Context, s: Symptom, recs: List<Recording>): SymptomInfo {
         val dao = AppDb.get(c).dao()
-        val mine = recs.filter { it.source != Source.WINDOW }
+        val mine = recs.filter { it.source != Source.LEGACY_WINDOW }
         val beforeRecs = mine.filter { !it.isAfterRepair(s.repairedAt) }
         val analysis = Conditions.analyze(beforeRecs.map { it.snap }, baseline(c))
         val rule = Conditions.decode(s.rule).ifEmpty { analysis.rule }
@@ -114,7 +117,8 @@ object SymptomAnalyzer {
                 r.file?.let { bands(it) }?.let { r to SoundAnalysis.compare(beforeBands, it) }
             }
             RepairInfo(at, passes, after.count { it.source == Source.AUTO }, after.size, rep,
-                beforeBands?.let { SoundAnalysis.strongest(it) }, changes)
+                beforeBands?.let { SoundAnalysis.strongest(it) }, changes,
+                RepairFlow.latestAfter(mine, at) { it.file != null && File(it.file).exists() })
         }
         return SymptomInfo(s, mine, beforeRecs, analysis, rule, rep, repair)
     }

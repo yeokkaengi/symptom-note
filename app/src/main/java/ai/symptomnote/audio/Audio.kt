@@ -71,7 +71,7 @@ object WavIo {
 
 /**
  * 직전 60초 링 버퍼 녹음 엔진(verify 5-3, 5-17). 48kHz 모노 16비트로 약 5.6MB.
- * - 수동 기록은 60초 전체를, 자동 포착·창문 점검은 마지막 10초만 저장한다.
+ * - 수동 기록은 60초 전체를, 자동 포착은 마지막 10초만 저장한다.
  * - 48kHz 를 먼저 열고, 안 되면 44.1kHz(8~16kHz 대역 분석을 위해 16kHz 는 쓰지 않음).
  * - RecordingService(마이크 FGS) 안에서만 start 한다. 프로세스 전역 object 인 이유: 주행 화면·자동 포착이 같은 버퍼를 읽음.
  * - 원본 소리는 기기 안(filesDir/rec)에만 저장하고, 직전 60초만 메모리에 둔다.
@@ -176,7 +176,7 @@ object RingRecorder {
         return if (s.isEmpty()) null else WavIo.Pcm16(r, s)
     }
 
-    /** 링 버퍼 직전 최대 [lastSec]초를 WAV 저장(자동 포착·창문 점검은 10초). 엔진이 꺼져 있으면 저장하지 않는다. */
+    /** 링 버퍼 직전 최대 [lastSec]초를 WAV 저장(자동 포착은 10초). 엔진이 꺼져 있으면 저장하지 않는다. */
     fun save(file: File, lastSec: Int = CLIP_SECONDS): Saved {
         if (thread == null) return Saved(false, "기록이 꺼져 있어요")
         val pcm = grab(lastSec) ?: return Saved(false, "아직 녹음된 소리가 없어요")
