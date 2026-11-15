@@ -46,7 +46,6 @@ sealed interface Screen {
     data object Symptoms : Screen
     data class SymptomDetail(val id: Long) : Screen
     data class Report(val id: Long) : Screen
-    data object WindowCheck : Screen
     data object Settings : Screen
 }
 
@@ -107,7 +106,6 @@ class MainActivity : ComponentActivity() {
                 Screen.Symptoms -> SymptomsScreen(back = { screen = Screen.Home }, open = { screen = Screen.SymptomDetail(it) })
                 is Screen.SymptomDetail -> SymptomDetailScreen(s.id, back = { screen = Screen.Symptoms }, openReport = { screen = Screen.Report(s.id) })
                 is Screen.Report -> ReportScreen(s.id, back = { screen = Screen.SymptomDetail(s.id) })
-                Screen.WindowCheck -> WindowCheckScreen(back = { screen = Screen.Home })
                 Screen.Settings -> SettingsScreen(back = { screen = Screen.Home })
             }
         }
@@ -152,10 +150,7 @@ class MainActivity : ComponentActivity() {
                 BigButton("기록 목록", Modifier.weight(1f), primary = false) { go(Screen.Records) }
                 BigButton("증상·리포트", Modifier.weight(1f), primary = false) { go(Screen.Symptoms) }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                BigButton("창문 점검", Modifier.weight(1f), primary = false) { go(Screen.WindowCheck) }
-                BigButton("설정", Modifier.weight(1f), primary = false) { go(Screen.Settings) }
-            }
+            BigButton("설정", Modifier.fillMaxWidth(), primary = false) { go(Screen.Settings) }
         }
     }
 

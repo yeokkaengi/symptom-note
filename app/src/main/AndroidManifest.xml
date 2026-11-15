@@ -34,10 +34,6 @@
     <uses-permission android:name="pleos.car.permission.CAR_WINDOWS" />
     <!-- [Normal] TurnSignal -->
     <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
-    <!-- [Normal] Seat 착석(창문 점검 전 동승석 확인) -->
-    <uses-permission android:name="pleos.car.permission.CAR_SEATS" />
-    <!-- [Normal] Window.setWindowPosition (창문 점검, verify 5-1) -->
-    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_WINDOWS" />
     <!-- [Normal] Pleos TTS "기록했어요" (verify 5-6) -->
     <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
 

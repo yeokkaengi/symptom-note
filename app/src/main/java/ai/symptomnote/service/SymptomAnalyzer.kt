@@ -100,7 +100,7 @@ object SymptomAnalyzer {
 
     suspend fun load(c: Context, s: Symptom, recs: List<Recording>): SymptomInfo {
         val dao = AppDb.get(c).dao()
-        val mine = recs.filter { it.source != Source.WINDOW }
+        val mine = recs.filter { it.source != Source.LEGACY_WINDOW }
         val beforeRecs = mine.filter { !it.isAfterRepair(s.repairedAt) }
         val analysis = Conditions.analyze(beforeRecs.map { it.snap }, baseline(c))
         val rule = Conditions.decode(s.rule).ifEmpty { analysis.rule }

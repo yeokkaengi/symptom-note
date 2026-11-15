@@ -30,7 +30,11 @@ data class DriveSecond(
 object Source {
     const val MANUAL = "MANUAL"
     const val AUTO = "AUTO"
-    const val WINDOW = "WINDOW"
+    /**
+     * 삭제된 창문 점검 기능(v1.0.x)이 남긴 기록의 source 값. 새로 저장하지 않는다.
+     * 이미 저장된 기록이 있을 수 있어 값은 남기고, 목록·분석 쿼리에서 제외한다.
+     */
+    const val LEGACY_WINDOW = "WINDOW"
 }
 
 /** 소리 기록 1개 + 저장 순간의 조건 스냅샷(직전 10초). file 은 앱 내부 저장소 경로, 삭제하면 null. */
@@ -89,11 +93,9 @@ interface NoteDao {
     @Insert suspend fun insertRecording(r: Recording): Long
     @Update suspend fun updateRecording(r: Recording)
     @Delete suspend fun deleteRecording(r: Recording)
-    @Query("SELECT * FROM Recording ORDER BY t DESC") fun recordings(): Flow<List<Recording>>
-    @Query("SELECT * FROM Recording WHERE symptomId = :id ORDER BY t") fun recordingsOf(id: Long): Flow<List<Recording>>
-    @Query("SELECT * FROM Recording WHERE symptomId = :id ORDER BY t") suspend fun recordingsOfNow(id: Long): List<Recording>
-    @Query("SELECT * FROM Recording WHERE source = 'WINDOW' ORDER BY t") fun windowChecks(): Flow<List<Recording>>
-    @Query("SELECT * FROM Recording WHERE source = 'WINDOW' ORDER BY t") suspend fun windowChecksNow(): List<Recording>
+    @Query("SELECT * FROM Recording WHERE source != 'WINDOW' ORDER BY t DESC") fun recordings(): Flow<List<Recording>>
+    @Query("SELECT * FROM Recording WHERE symptomId = :id AND source != 'WINDOW' ORDER BY t") fun recordingsOf(id: Long): Flow<List<Recording>>
+    @Query("SELECT * FROM Recording WHERE symptomId = :id AND source != 'WINDOW' ORDER BY t") suspend fun recordingsOfNow(id: Long): List<Recording>
     /** 증상에 넣거나(sid) 뺀다(sid = null). 수리 전/후 구분도 함께 정한다(null = 기록 시각으로 판단). */
     @Query("UPDATE Recording SET symptomId = :sid, afterRepair = :afterRepair WHERE id IN (:ids)")
     suspend fun assign(ids: List<Long>, sid: Long?, afterRepair: Boolean? = null)

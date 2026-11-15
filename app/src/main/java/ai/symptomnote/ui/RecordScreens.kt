@@ -59,7 +59,7 @@ fun snapLine(r: Recording): String {
     ).joinToString(" · ")
 }
 
-fun sourceLabel(r: Recording) = when (r.source) { Source.AUTO -> "자동"; Source.WINDOW -> "창문 점검"; else -> "수동" } + if (r.demo) "·시연" else ""
+fun sourceLabel(r: Recording) = when (r.source) { Source.AUTO -> "자동"; else -> "수동" } + if (r.demo) "·시연" else ""
 
 /** 재생 버튼(녹음 파일이 지워졌으면 비활성). */
 @Composable
@@ -98,7 +98,7 @@ fun RecordsScreen(back: () -> Unit, openSymptom: (Long) -> Unit) {
     val dao = remember { AppDb.get(ctx).dao() }
     val all by remember { dao.recordings() }.collectAsStateWithLifecycle(emptyList())
     val symptoms by remember { dao.symptoms() }.collectAsStateWithLifecycle(emptyList())
-    val recs = all.filter { it.source != Source.WINDOW }
+    val recs = all.filter { it.source != Source.LEGACY_WINDOW }
     val names = symptoms.associate { it.id to it.name }
     val sel = remember { mutableStateListOf<Long>() }
     var grouping by remember { mutableStateOf(false) }
