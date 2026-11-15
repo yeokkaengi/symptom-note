@@ -5,6 +5,7 @@ import ai.symptomnote.core.Analysis
 import ai.symptomnote.core.BandChange
 import ai.symptomnote.core.Cond
 import ai.symptomnote.core.Conditions
+import ai.symptomnote.core.RepairFlow
 import ai.symptomnote.core.Snapshot
 import ai.symptomnote.core.SoundAnalysis
 import ai.symptomnote.data.AppDb
@@ -117,7 +118,7 @@ object SymptomAnalyzer {
             }
             RepairInfo(at, passes, after.count { it.source == Source.AUTO }, after.size, rep,
                 beforeBands?.let { SoundAnalysis.strongest(it) }, changes,
-                after.filter { it.file != null && File(it.file).exists() }.maxByOrNull { it.t })
+                RepairFlow.latestAfter(mine, at) { it.file != null && File(it.file).exists() })
         }
         return SymptomInfo(s, mine, beforeRecs, analysis, rule, rep, repair)
     }

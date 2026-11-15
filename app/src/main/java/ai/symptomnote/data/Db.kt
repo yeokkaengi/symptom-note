@@ -67,6 +67,13 @@ data class Recording(
 
     /** 이 증상의 수리 날짜 기준으로 수리 후 기록인가(사용자가 고른 값 우선). */
     fun isAfterRepair(repairedAt: Long?): Boolean = ai.symptomnote.core.Grouping.isAfterRepair(t, repairedAt, afterRepair)
+
+    companion object {
+        /** 링 버퍼 10초 저장 기록(RecordSaver.save). 자동 포착이면 [autoFor] 증상에 바로 묶는다. 수리 전/후 구분은 기록 시각으로 판단(afterRepair = null). */
+        fun captured(t: Long, file: String, source: String, snap: Snapshot, sampleRate: Int, peak: Int, autoFor: Long?) =
+            Recording(t = t, file = file, source = source, snap = snap, sampleRate = sampleRate, peak = peak,
+                symptomId = autoFor, autoForSymptomId = autoFor)
+    }
 }
 
 /** 증상(케이스). rule 은 자동 포착을 켤 때 고정한 공통 조건(Conditions.encode). */
