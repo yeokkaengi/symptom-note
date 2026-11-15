@@ -176,7 +176,7 @@ app/src/main/java/ai/symptomnote/
     ├── OtherScreens.kt         설정
     └── Common.kt               색, 버튼, 패널 같은 공통 요소
 app/src/main/assets/schema.json 글레오 함수 등록
-app/src/test/                   단위 테스트 35개
+app/src/test/                   단위 테스트 40개
 docs/                           근거 기록, 플랫폼 확인 사항, 시연 순서, 발전 계획, 개발 규칙
 apk/                            제출용 APK
 ```
