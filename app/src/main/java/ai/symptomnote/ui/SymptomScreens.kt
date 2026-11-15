@@ -159,9 +159,11 @@ private fun RepairPanel(info: SymptomInfo, onRepair: () -> Unit, onClear: () -> 
     Small("수리 완료: ${fmtDate(rp.repairedAt)}")
     Body(rp.summary(), C.Green)
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        PlayButton(rp.before, "▶ 수리 전")
-        PlayButton(rp.changes.lastOrNull()?.first, "▶ 수리 후")
+        PlayButton(rp.before, "▶ 수리 전 재생")
+        if (rp.latestAfter != null) PlayButton(rp.latestAfter, "▶ 수리 후 재생")
+        else BigButton("▶ 수리 후 재생", primary = false, enabled = false) {}
     }
+    if (rp.latestAfter == null) Body("수리 후 녹음이 아직 없어요", C.Sub)
     rp.changes.forEach { (r, c) ->
         Small("${fmtTime(r.t)} ${sourceLabel(r)} · ${SoundAnalysis.BAND_NAMES[c.band]}Hz ${"%+.1f".format(c.deltaDb)}dB" + if (c.recurrence) " · 재발 기록" else "")
     }
